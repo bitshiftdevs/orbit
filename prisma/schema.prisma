@@ -21,10 +21,24 @@ model Project {
   images      String // store as comma-separated or JSON string
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  clientId    String?
   bugs        Bug[]
   todos       Todo[]
   secrets     Secret[]
   envVars     EnvVar[]
+  client      Client?  @relation(fields: [clientId], references: [id])
+}
+
+model Client {
+  id       String    @id @default(uuid())
+  name     String
+  email    String    @unique
+  phone    String?
+  company  String?
+  apiKey   String    @unique
+  bugs     Bug[]
+  todos    Todo[]
+  projects Project[]
 }
 
 model Bug {
@@ -34,6 +48,8 @@ model Bug {
   description String
   status      String // open, closed, etc.
   createdAt   DateTime @default(now())
+  client      Client?  @relation(fields: [clientId], references: [id])
+  clientId    String?
 }
 
 model Todo {
@@ -43,6 +59,8 @@ model Todo {
   description String
   status      String // todo, in-progress, done
   createdAt   DateTime @default(now())
+  client      Client?  @relation(fields: [clientId], references: [id])
+  clientId    String?
 }
 
 model Secret {

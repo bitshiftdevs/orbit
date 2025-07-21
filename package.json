@@ -19,10 +19,10 @@
 		"apply:mig:deploy": "npx wrangler d1 migrations apply project-manager-db --remote",
 		"seed:local": "npx wrangler d1 execute project-manager-db --local --file=./prisma/seed.sql",
 		"seed:deploy": "npx wrangler d1 execute project-manager-db --remote --file=./prisma/seed.sql",
-		"reset:local": "npx wrangler d1 execute project-manager-db --local --command=RESET",
-		"reset:deploy": "npx wrangler d1 execute project-manager-db --remote --command=RESET",
-		"reset:local:migrate": "npx wrangler d1 migrations reset project-manager-db --local",
-		"reset:deploy:migrate": "npx wrangler d1 migrations reset project-manager-db --remote"
+		"reset:local": "rm -rf .wrangler/state && pnpm apply:mig:local && pnpm prisma generate",
+		"reset:local:migrate": "rm -rf prisma/migrations && pnpm create:mig v1 && pnpm gen:mig prisma/migrations/0001_v1.sql && pnpm reset:local",
+		"reset:deploy": "rm -rf .wrangler/state && pnpm apply:mig:deploy && pnpm prisma generate",
+		"reset:deploy:migrate": "rm -rf prisma/migrations && pnpm create:mig && pnpm reset:deploy"
 	},
 	"dependencies": {
 		"@prisma/adapter-d1": "^6.12.0",

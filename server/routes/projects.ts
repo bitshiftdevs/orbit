@@ -123,4 +123,31 @@ projects.post('/:id/envvars', async (c) => {
     return c.json(envVar);
 });
 
+// Add client bug
+projects.post('/:id/bugs/client', async (c) => {
+    const prisma = getPrisma(c.env);
+    const { id: projectId } = c.req.param();
+    const { description, status, apiKey } = await c.req.json();
+    if (!apiKey) return c.json({ error: 'apiKey required' }, 401);
+    const client = await prisma.client.findUnique({ where: { apiKey } });
+    if (!client) return c.json({ error: 'Invalid apiKey' }, 401);
+    const bug = await prisma.bug.create({
+        data: { projectId, description, status: status || 'open', clientId: client.id },
+    });
+    return c.json(bug);
+});
+// Add client todo
+projects.post('/:id/todos/client', async (c) => {
+    const prisma = getPrisma(c.env);
+    const { id: projectId } = c.req.param();
+    const { description, status, apiKey } = await c.req.json();
+    if (!apiKey) return c.json({ error: 'apiKey required' }, 401);
+    const client = await prisma.client.findUnique({ where: { apiKey } });
+    if (!client) return c.json({ error: 'Invalid apiKey' }, 401);
+    const todo = await prisma.todo.create({
+        data: { projectId, description, status: status || 'todo', clientId: client.id },
+    });
+    return c.json(todo);
+});
+
 export default projects; 
