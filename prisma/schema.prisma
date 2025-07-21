@@ -2,11 +2,61 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
+  output          = "../node_modules/@prisma-app/client"
 }
 
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  status      String
+  stack       String // store as comma-separated or JSON string
+  images      String // store as comma-separated or JSON string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  bugs        Bug[]
+  todos       Todo[]
+  secrets     Secret[]
+  envVars     EnvVar[]
+}
+
+model Bug {
+  id          String   @id @default(uuid())
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String
+  description String
+  status      String // open, closed, etc.
+  createdAt   DateTime @default(now())
+}
+
+model Todo {
+  id          String   @id @default(uuid())
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String
+  description String
+  status      String // todo, in-progress, done
+  createdAt   DateTime @default(now())
+}
+
+model Secret {
+  id        String  @id @default(uuid())
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+  key       String
+  value     String // encrypted
+}
+
+model EnvVar {
+  id        String  @id @default(uuid())
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+  key       String
+  value     String // encrypted
 }
