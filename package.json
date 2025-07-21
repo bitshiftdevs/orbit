@@ -10,7 +10,19 @@
 		"build-only": "vite build",
 		"type-check": "vue-tsc --build",
 		"deploy": "pnpm run build && wrangler deploy",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"env": "dotenv -e .dev.vars",
+		"gen:prisma": "npx prisma generate",
+		"create:mig": "npx wrangler d1 migrations create project-manager-db",
+		"gen:mig": "npx prisma migrate diff --from-empty --to-schema-datamodel ./prisma/schema.prisma --script --output",
+		"apply:mig:local": "npx wrangler d1 migrations apply project-manager-db --local",
+		"apply:mig:deploy": "npx wrangler d1 migrations apply project-manager-db --remote",
+		"seed:local": "npx wrangler d1 execute project-manager-db --local --file=./prisma/seed.sql",
+		"seed:deploy": "npx wrangler d1 execute project-manager-db --remote --file=./prisma/seed.sql",
+		"reset:local": "npx wrangler d1 execute project-manager-db --local --command=RESET",
+		"reset:deploy": "npx wrangler d1 execute project-manager-db --remote --command=RESET",
+		"reset:local:migrate": "npx wrangler d1 migrations reset project-manager-db --local",
+		"reset:deploy:migrate": "npx wrangler d1 migrations reset project-manager-db --remote"
 	},
 	"dependencies": {
 		"@prisma/adapter-d1": "^6.12.0",
