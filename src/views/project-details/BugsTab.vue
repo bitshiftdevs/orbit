@@ -2,53 +2,108 @@
 import { ref } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Textarea from '@/components/ui/textarea/Textarea.vue'
-import FormItem from '@/components/ui/form/FormItem.vue'
-import FormLabel from '@/components/ui/form/FormLabel.vue'
-import { FormField, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
 
-defineProps<{ projectId: string, bugs: { id: string, description: string, status: string }[] }>()
+defineProps<{
+  projectId: string;
+  bugs: { id: string; description: string; status: string }[];
+}>()
+
 const emit = defineEmits(['added'])
-const newBug = ref('')
-const bugLoading = ref(false)
+
+const newBugDescription = ref('')
+const newBugStatus = ref('open')
+const loading = ref(false)
+const error = ref('')
+const formError = ref('')
 
 const addBug = async () => {
-  if (!newBug.value.trim()) return
-  bugLoading.value = true
+  if (!newBugDescription.value.trim()) {
+    formError.value = 'Description is required'
+    return
+  }
+  
+  formError.value = ''
+  loading.value = true
+  error.value = ''
+  
   try {
     const res = await fetch(`/api/projects/${projectId}/bugs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description: newBug.value, status: 'open' })
+      body: JSON.stringify({
+        description: newBugDescription.value,
+        status: newBugStatus.value
+      })
     })
-    if (!res.ok) throw new Error('Failed to add bug')
-    newBug.value = ''
+    
+    if (!res.ok) {
+      const errorData = await res.json()
+      throw new Error(errorData.error || 'Failed to add bug')
+    }
+    
+    newBugDescription.value = ''
     emit('added')
-  } catch (e) {} finally {
-    bugLoading.value = false
+  } catch (e: any) {
+    error.value = e.message || 'Error adding bug'
+  } finally {
+    loading.value = false
   }
 }
 </script>
+
 <template>
-  <div>
-    <form @submit.prevent="addBug" class="mb-4 space-y-2">
-      <FormField name="bug" v-slot="{ componentField }">
-        <FormItem>
-          <FormLabel>Description</FormLabel>
-          <FormControl>
-            <Textarea placeholder="Describe a bug..." v-bind="componentField" v-model="newBug" required rows="2" />
-          </FormControl>
-          <FormDescription />
-          <FormMessage />
-        </FormItem>
-      </FormField>
-      <Button type="submit" :disabled="bugLoading || !newBug.trim()" class="bg-red-600 hover:bg-red-700">Add Bug</Button>
+  <div class="p-6">
+    <h3 class="text-lg font-semibold mb-4">Bugs</h3>
+    
+    <div v-if="error" class="text-red-400 mb-4">{{ error }}</div>
+    
+    <form @submit.prevent="addBug" class="mb-6">
+      <div class="space-y-2">
+        <label for="bug-description" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Description</label>
+        <Textarea 
+          id="bug-description"
+          v-model="newBugDescription"
+          placeholder="Describe the bug..."
+          :disabled="loading"
+          class="min-h-[100px]"
+        />
+        <p v-if="formError" class="text-sm font-medium text-red-500">{{ formError }}</p>
+      </div>
+      
+      <div class="space-y-2 mt-4">
+        <label for="bug-status" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Status</label>
+        <select 
+          id="bug-status"
+          v-model="newBugStatus"
+          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 bg-gray-800 border-gray-700 text-white"
+        >
+          <option value="open">Open</option>
+          <option value="in-progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+      
+      <Button type="submit" class="mt-4 bg-blue-600 hover:bg-blue-700" :disabled="loading">
+        {{ loading ? 'Adding...' : 'Add Bug' }}
+      </Button>
     </form>
-    <div v-if="bugs.length === 0" class="text-gray-400">No bugs yet.</div>
-    <ul>
-      <li v-for="bug in bugs" :key="bug.id" class="mb-1 flex items-center justify-between">
-        <span>{{ bug.description }}</span>
-        <span class="text-xs px-2 py-1 rounded bg-red-700">{{ bug.status }}</span>
-      </li>
-    </ul>
+    
+    <div v-if="bugs.length === 0" class="text-gray-400">No bugs reported yet.</div>
+    <div v-else class="space-y-3">
+      <div v-for="bug in bugs" :key="bug.id" class="bg-gray-800 p-3 rounded-md">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <p>{{ bug.description }}</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded ml-2" :class="{
+            'bg-red-700': bug.status === 'open',
+            'bg-yellow-700': bug.status === 'in-progress',
+            'bg-green-700': bug.status === 'resolved',
+            'bg-gray-700': bug.status === 'closed',
+          }">{{ bug.status }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template> 

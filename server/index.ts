@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from './middleware/cors';
 import { errorHandler } from './middleware/error-handler';
 import projects from './routes/projects';
+import clients from './routes/clients';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -17,6 +18,9 @@ app.get('/api/health', (c) => {
 
 // Project management API
 app.route('/api/projects', projects);
+
+// Client management API
+app.route('/api/clients', clients);
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {

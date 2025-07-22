@@ -5,24 +5,24 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "project-manager",
-	"compatibility_date": "2025-07-19",
+	"compatibility_date": "2025-07-12",
 	"main": "server/index.ts",
 	"assets": {
-		"not_found_handling": "single-page-application"
+		"not_found_handling": "single-page-application",
 	},
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "project-manager-db",
 			"database_id": "dcc146dd-30fd-47f7-b1df-27603c2482dd",
-			"migrations_dir": "prisma/migrations"
-		}
+			"migrations_dir": "prisma/migrations",
+		},
 	],
 	"vars": {
 		"JWT_SECRET": "${JWT_SECRET}",
-		"D1_DATABASE_ID": "${D1_DATABASE_ID}"
-	}
+		"D1_DATABASE_ID": "${D1_DATABASE_ID}",
+	},
 }

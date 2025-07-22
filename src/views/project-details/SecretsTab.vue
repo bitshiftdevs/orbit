@@ -2,64 +2,114 @@
 import { ref } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
-import FormItem from '@/components/ui/form/FormItem.vue'
-import FormLabel from '@/components/ui/form/FormLabel.vue'
-import { FormField, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
 
-defineProps<{ projectId: string, secrets: { id: string, key: string }[] }>()
+defineProps<{
+  projectId: string;
+  secrets: { id: string; key: string; value: string }[];
+}>()
+
 const emit = defineEmits(['added'])
-const secretKey = ref('')
-const secretValue = ref('')
-const secretLoading = ref(false)
+
+const newSecretKey = ref('')
+const newSecretValue = ref('')
+const loading = ref(false)
+const error = ref('')
+const formErrors = ref({
+  key: '',
+  value: ''
+})
 
 const addSecret = async () => {
-  if (!secretKey.value.trim() || !secretValue.value.trim()) return
-  secretLoading.value = true
+  // Reset form errors
+  formErrors.value = { key: '', value: '' }
+  let isValid = true
+  
+  if (!newSecretKey.value.trim()) {
+    formErrors.value.key = 'Key is required'
+    isValid = false
+  }
+  
+  if (!newSecretValue.value.trim()) {
+    formErrors.value.value = 'Value is required'
+    isValid = false
+  }
+  
+  if (!isValid) return
+  
+  loading.value = true
+  error.value = ''
+  
   try {
     const res = await fetch(`/api/projects/${projectId}/secrets`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: secretKey.value, value: secretValue.value })
+      body: JSON.stringify({
+        key: newSecretKey.value,
+        value: newSecretValue.value
+      })
     })
-    if (!res.ok) throw new Error('Failed to add secret')
-    secretKey.value = ''
-    secretValue.value = ''
+    
+    if (!res.ok) {
+      const errorData = await res.json()
+      throw new Error(errorData.error || 'Failed to add secret')
+    }
+    
+    newSecretKey.value = ''
+    newSecretValue.value = ''
     emit('added')
-  } catch (e) {} finally {
-    secretLoading.value = false
+  } catch (e: any) {
+    error.value = e.message || 'Error adding secret'
+  } finally {
+    loading.value = false
   }
 }
 </script>
+
 <template>
-  <div>
-    <form @submit.prevent="addSecret" class="mb-4 space-y-2">
-      <FormField name="secretKey" v-slot="{ componentField }">
-        <FormItem>
-          <FormLabel>Key</FormLabel>
-          <FormControl>
-            <Input placeholder="Key" v-bind="componentField" v-model="secretKey" required />
-          </FormControl>
-          <FormDescription />
-          <FormMessage />
-        </FormItem>
-      </FormField>
-      <FormField name="secretValue" v-slot="{ componentField }">
-        <FormItem>
-          <FormLabel>Value</FormLabel>
-          <FormControl>
-            <Input placeholder="Value" v-bind="componentField" v-model="secretValue" required />
-          </FormControl>
-          <FormDescription />
-          <FormMessage />
-        </FormItem>
-      </FormField>
-      <Button type="submit" :disabled="secretLoading || !secretKey.trim() || !secretValue.trim()" class="bg-blue-600 hover:bg-blue-700">Add Secret</Button>
+  <div class="p-6">
+    <h3 class="text-lg font-semibold mb-4">Secrets</h3>
+    
+    <div v-if="error" class="text-red-400 mb-4">{{ error }}</div>
+    
+    <form @submit.prevent="addSecret" class="mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <label for="secret-key" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Key</label>
+          <Input 
+            id="secret-key"
+            v-model="newSecretKey"
+            placeholder="SECRET_KEY"
+            :disabled="loading"
+          />
+          <p v-if="formErrors.key" class="text-sm font-medium text-red-500">{{ formErrors.key }}</p>
+        </div>
+        
+        <div class="space-y-2">
+          <label for="secret-value" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Value</label>
+          <Input 
+            id="secret-value"
+            v-model="newSecretValue"
+            type="password"
+            placeholder="Secret value"
+            :disabled="loading"
+          />
+          <p v-if="formErrors.value" class="text-sm font-medium text-red-500">{{ formErrors.value }}</p>
+        </div>
+      </div>
+      
+      <Button type="submit" class="mt-4 bg-purple-600 hover:bg-purple-700" :disabled="loading">
+        {{ loading ? 'Adding...' : 'Add Secret' }}
+      </Button>
     </form>
-    <div v-if="secrets.length === 0" class="text-gray-400">No secrets yet.</div>
-    <ul>
-      <li v-for="secret in secrets" :key="secret.id" class="mb-1">
-        <span class="font-mono">{{ secret.key }}</span>
-      </li>
-    </ul>
+    
+    <div v-if="secrets.length === 0" class="text-gray-400">No secrets added yet.</div>
+    <div v-else class="space-y-3">
+      <div v-for="secret in secrets" :key="secret.id" class="bg-gray-800 p-3 rounded-md">
+        <div class="flex justify-between items-center">
+          <div class="font-mono">{{ secret.key }}</div>
+          <div class="text-gray-400">••••••••</div>
+        </div>
+      </div>
+    </div>
   </div>
 </template> 

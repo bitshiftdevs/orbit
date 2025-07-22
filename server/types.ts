@@ -1,3 +1,5 @@
+import { D1Database } from '@cloudflare/workers-types';
+
 export interface Env {
   DB: D1Database;
   CLOUDINARY_CLOUD_NAME: string;
@@ -85,6 +87,7 @@ export interface Project {
   images: string; // JSON or comma-separated string
   createdAt: string;
   updatedAt: string;
+  clientId?: string;
 }
 
 export interface Bug {
@@ -93,6 +96,7 @@ export interface Bug {
   description: string;
   status: string;
   createdAt: string;
+  clientId?: string;
 }
 
 export interface Todo {
@@ -101,6 +105,7 @@ export interface Todo {
   description: string;
   status: string;
   createdAt: string;
+  clientId?: string;
 }
 
 export interface Secret {
@@ -115,4 +120,20 @@ export interface EnvVar {
   projectId: string;
   key: string;
   value: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  email: string;
+  company?: string;
+  phone?: string;
+  apiKey: string;
+  projects?: Project[];
+  bugs?: Bug[];
+  todos?: Todo[];
+}
+
+export interface Fetcher {
+  fetch(request: Request): Promise<Response>;
 }

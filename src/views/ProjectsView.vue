@@ -2,8 +2,12 @@
 import { ref, onMounted } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
+import Dialog from '@/components/ui/dialog/Dialog.vue'
+import DialogContent from '@/components/ui/dialog/DialogContent.vue'
+import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
+import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
+import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
+import DialogDescription from '@/components/ui/dialog/DialogDescription.vue'
 import ProjectCard from '@/components/ProjectCard.vue'
 import { useRouter } from 'vue-router'
 
@@ -28,6 +32,11 @@ const form = ref({
   status: 'active',
   stack: '', // comma separated
   images: '', // comma separated URLs
+})
+const formErrors = ref({
+  name: '',
+  description: '',
+  status: ''
 })
 
 const router = useRouter()
@@ -56,6 +65,11 @@ const openAddProject = () => {
     stack: '',
     images: '',
   }
+  formErrors.value = {
+    name: '',
+    description: '',
+    status: ''
+  }
   showProjectModal.value = true
 }
 
@@ -69,10 +83,43 @@ const openEditProject = (project: Project) => {
     stack: project.stack.join(','),
     images: project.images.join(','),
   }
+  formErrors.value = {
+    name: '',
+    description: '',
+    status: ''
+  }
   showProjectModal.value = true
 }
 
+const validateForm = () => {
+  let isValid = true
+  formErrors.value = {
+    name: '',
+    description: '',
+    status: ''
+  }
+  
+  if (!form.value.name.trim()) {
+    formErrors.value.name = 'Name is required'
+    isValid = false
+  }
+  
+  if (!form.value.description.trim()) {
+    formErrors.value.description = 'Description is required'
+    isValid = false
+  }
+  
+  if (!form.value.status.trim()) {
+    formErrors.value.status = 'Status is required'
+    isValid = false
+  }
+  
+  return isValid
+}
+
 const saveProject = async () => {
+  if (!validateForm()) return
+  
   const payload = {
     name: form.value.name,
     description: form.value.description,
@@ -138,57 +185,43 @@ onMounted(fetchProjects)
         </div>
       </div>
     </div>
-    <Dialog v-model:open="showProjectModal">
+    <Dialog :open="showProjectModal" @update:open="showProjectModal = $event">
       <DialogContent class="max-w-lg w-full">
         <DialogHeader>
           <DialogTitle>{{ isEditing ? 'Edit' : 'Add' }} Project</DialogTitle>
+          <DialogDescription>
+            {{ isEditing ? 'Edit' : 'Add' }} a new project to your portfolio.
+          </DialogDescription>
         </DialogHeader>
         <form @submit.prevent="saveProject" class="space-y-4">
-          <FormField name="name" v-slot="{ componentField }">
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input v-bind="componentField" v-model="form.name" required placeholder="Project name" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-          <FormField name="description" v-slot="{ componentField }">
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Input v-bind="componentField" v-model="form.description" required placeholder="Project description" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-          <FormField name="status" v-slot="{ componentField }">
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <FormControl>
-                <Input v-bind="componentField" v-model="form.status" required placeholder="Status (e.g. active, completed)" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-          <FormField name="stack" v-slot="{ componentField }">
-            <FormItem>
-              <FormLabel>Stack (comma separated)</FormLabel>
-              <FormControl>
-                <Input v-bind="componentField" v-model="form.stack" placeholder="e.g. Vue.js, Tailwind, Cloudflare" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-          <FormField name="images" v-slot="{ componentField }">
-            <FormItem>
-              <FormLabel>Images (comma separated URLs)</FormLabel>
-              <FormControl>
-                <Input v-bind="componentField" v-model="form.images" placeholder="e.g. https://..." />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+          <div class="space-y-2">
+            <label for="name" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Name</label>
+            <Input id="name" v-model="form.name" required placeholder="Project name" />
+            <p v-if="formErrors.name" class="text-sm font-medium text-red-500">{{ formErrors.name }}</p>
+          </div>
+          
+          <div class="space-y-2">
+            <label for="description" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Description</label>
+            <Input id="description" v-model="form.description" required placeholder="Project description" />
+            <p v-if="formErrors.description" class="text-sm font-medium text-red-500">{{ formErrors.description }}</p>
+          </div>
+          
+          <div class="space-y-2">
+            <label for="status" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Status</label>
+            <Input id="status" v-model="form.status" required placeholder="Status (e.g. active, completed)" />
+            <p v-if="formErrors.status" class="text-sm font-medium text-red-500">{{ formErrors.status }}</p>
+          </div>
+          
+          <div class="space-y-2">
+            <label for="stack" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Stack (comma separated)</label>
+            <Input id="stack" v-model="form.stack" placeholder="e.g. Vue.js, Tailwind, Cloudflare" />
+          </div>
+          
+          <div class="space-y-2">
+            <label for="images" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Images (comma separated URLs)</label>
+            <Input id="images" v-model="form.images" placeholder="e.g. https://..." />
+          </div>
+          
           <DialogFooter class="flex gap-2 justify-end mt-6">
             <Button type="button" class="bg-gray-700 hover:bg-gray-800" @click="showProjectModal = false">Cancel</Button>
             <Button type="submit" class="bg-blue-600 hover:bg-blue-700">Save</Button>

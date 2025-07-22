@@ -1,6 +1,6 @@
 import { PrismaD1 } from "@prisma/adapter-d1";
 import type { Env } from "../types";
-import { PrismaClient } from "@prisma-app/client";
+import { PrismaClient } from "@prisma/client";
 
 let prisma: PrismaClient;
 

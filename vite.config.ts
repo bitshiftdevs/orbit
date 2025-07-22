@@ -14,6 +14,21 @@ export default defineConfig({
 		cloudflare(),
 		tailwindcss()
 	],
+	optimizeDeps: {
+		esbuildOptions: {
+			sourcemap: true,
+			treeShaking: true,
+		},
+	},
+	build: {
+		rollupOptions: {
+			output: {
+				manualChunks: {
+					vendor: ["vue", "vue-router", "pinia"],
+				},
+			},
+		},
+	},
 	resolve: {
 		alias: {
 			'@': fileURLToPath(new URL('./src', import.meta.url))

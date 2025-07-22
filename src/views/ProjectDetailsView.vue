@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import Card from '@/components/ui/card/Card.vue'
 import Tabs from '@/components/ui/tabs/Tabs.vue'
@@ -11,6 +11,10 @@ import TodosTab from './project-details/TodosTab.vue'
 import SecretsTab from './project-details/SecretsTab.vue'
 import EnvVarsTab from './project-details/EnvVarsTab.vue'
 import ImagesTab from './project-details/ImagesTab.vue'
+import { ref as vueRef } from 'vue'
+import { Check, Copy } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 interface Bug { id: string; description: string; status: string }
 interface Todo { id: string; description: string; status: string }
@@ -34,6 +38,14 @@ const project = ref<Project | null>(null)
 const loading = ref(true)
 const error = ref('')
 
+const clientApiKey = vueRef('')
+const showClientLink = vueRef(false)
+const linkCopied = vueRef(false)
+
+const baseUrl = computed(() => {
+  return typeof window !== 'undefined' ? window.location.origin : ''
+})
+
 const fetchProject = async () => {
   loading.value = true
   error.value = ''
@@ -46,6 +58,22 @@ const fetchProject = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const generateClientLink = () => {
+  // For demo, generate a random API key - in real app, this would be stored in the database
+  const randomKey = Math.random().toString(36).substring(2, 15)
+  clientApiKey.value = randomKey
+  showClientLink.value = true
+}
+
+const copyLink = () => {
+  const link = `${baseUrl.value}/feedback/${project.value?.id}?key=${clientApiKey.value}`
+  navigator.clipboard.writeText(link)
+  linkCopied.value = true
+  setTimeout(() => {
+    linkCopied.value = false
+  }, 2000)
 }
 
 onMounted(fetchProject)
@@ -87,5 +115,25 @@ onMounted(fetchProject)
         <ImagesTab v-if="project" :project-id="project.id" :images="project.images" @added="fetchProject" />
       </TabsContent>
     </Tabs>
+    <div v-if="project" class="mt-8">
+      <h2 class="text-xl font-semibold mb-4">Client Feedback</h2>
+      <div class="flex items-center gap-2">
+        <Button @click="generateClientLink" class="bg-blue-600 hover:bg-blue-700">
+          Generate Client Feedback Link
+        </Button>
+      </div>
+      
+      <div v-if="showClientLink" class="mt-4 p-4 bg-gray-800 rounded-lg">
+        <p class="mb-2 text-sm text-gray-400">Share this link with your client:</p>
+        <div class="flex items-center gap-2">
+          <Input readonly :value="`${baseUrl}/feedback/${project?.id}?key=${clientApiKey}`" class="flex-1" />
+          <Button @click="copyLink" class="px-2">
+            <Copy v-if="!linkCopied" class="h-4 w-4" />
+            <Check v-else class="h-4 w-4 text-green-500" />
+          </Button>
+        </div>
+        <p class="mt-2 text-xs text-gray-500">This link includes a unique API key that allows your client to submit bugs and feature requests.</p>
+      </div>
+    </div>
   </div>
 </template> 
