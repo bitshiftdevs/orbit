@@ -13,6 +13,7 @@ import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
 import { DialogDescription } from 'reka-ui'
+import Label from '@/components/ui/label/Label.vue'
 
 interface Client {
 	id: string
@@ -187,34 +188,34 @@ onMounted(fetchClients)
 			<div v-else-if="error" class="text-red-400">{{ error }}</div>
 			<div v-else>
 				<div v-if="clients.length === 0" class="text-gray-400">No clients found.</div>
-				<div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<Card v-for="client in clients" :key="client.id" class="bg-gray-900 border-gray-800">
+				<div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<Card v-for="client in clients" :key="client.id">
 						<CardHeader>
 							<CardTitle>{{ client.name }}</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<div class="space-y-2">
-								<div>
-									<div class="text-sm text-gray-400">Email</div>
-									<div>{{ client.email }}</div>
+								<div class="flex items-center gap-2">
+									<Label>Email</Label>
+									<Input :value="client.email" disabled />
 								</div>
-								<div v-if="client.company">
-									<div class="text-sm text-gray-400">Company</div>
-									<div>{{ client.company }}</div>
+								<div v-if="client.company" class="flex items-center gap-2">
+									<Label>Company</Label>
+									<Input :value="client.company" disabled />
 								</div>
-								<div v-if="client.phone">
-									<div class="text-sm text-gray-400">Phone</div>
-									<div>{{ client.phone }}</div>
+								<div v-if="client.phone" class="flex items-center gap-2">
+									<Label>Phone</Label>
+									<Input :value="client.phone" disabled />
 								</div>
-								<div>
-									<div class="text-sm text-gray-400">API Key</div>
-									<div class="font-mono text-sm">{{ client.apiKey }}</div>
+								<div class="flex items-center gap-2">
+									<Label>API Key</Label>
+									<Input :value="client.apiKey" disabled />
 								</div>
 							</div>
 						</CardContent>
 						<CardFooter class="flex justify-end gap-2">
-							<Button size="sm" class="bg-yellow-600 hover:bg-yellow-700" @click="openEditClient(client)">Edit</Button>
-							<Button size="sm" class="bg-red-600 hover:bg-red-700" @click="deleteClient(client.id)">Delete</Button>
+							<Button size="sm" variant="secondary" @click="openEditClient(client)">Edit</Button>
+							<Button size="sm" variant="destructive" @click="deleteClient(client.id)">Delete</Button>
 						</CardFooter>
 					</Card>
 				</div>

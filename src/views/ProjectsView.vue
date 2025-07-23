@@ -179,8 +179,7 @@ onMounted(fetchProjects);
 					Manage and track your freelance and portfolio projects.
 				</p>
 			</div>
-			<Button class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded shadow text-lg font-semibold"
-				@click="openAddProject">
+			<Button class="font-bold" @click="openAddProject">
 				+ Add Project
 			</Button>
 		</div>

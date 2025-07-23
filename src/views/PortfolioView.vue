@@ -10,6 +10,11 @@ import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import { userProfile } from '@/stores/userProfile'
 import { Github, Mail } from 'lucide-vue-next'
+import Select from '@/components/ui/select/Select.vue'
+import SelectTrigger from '@/components/ui/select/SelectTrigger.vue'
+import SelectValue from '@/components/ui/select/SelectValue.vue'
+import SelectContent from '@/components/ui/select/SelectContent.vue'
+import SelectItem from '@/components/ui/select/SelectItem.vue'
 
 interface Project {
   id: string
@@ -123,15 +128,16 @@ onMounted(fetchProjects)
     <!-- Filters -->
     <div class="mb-8">
       <div class="flex flex-col md:flex-row gap-4 mb-4">
-        <div class="flex-1">
-          <Input v-model="searchTerm" placeholder="Search projects..." />
-        </div>
-        <div class="w-full md:w-64">
-          <select v-model="selectedTech" class="w-full bg-input border border-border rounded-md px-3 py-2 text-foreground">
-            <option value="">All Technologies</option>
-            <option v-for="tech in availableTechnologies" :key="tech" :value="tech">{{ tech }}</option>
-          </select>
-        </div>
+          <Input v-model="searchTerm" class="flex-1" placeholder="Search projects..." />
+          <Select v-model="selectedTech" class="w-full md:w-64 bg-input border border-border rounded-md px-3 py-2 text-foreground">
+            <SelectTrigger>
+              <SelectValue placeholder="All Technologies" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="null">All Technologies</SelectItem>
+              <SelectItem v-for="tech in availableTechnologies" :key="tech" :value="tech">{{ tech }}</SelectItem>
+            </SelectContent>
+          </Select>
         <Button @click="clearFilters" variant="outline" class="md:w-auto">Clear Filters</Button>
       </div>
     </div>
