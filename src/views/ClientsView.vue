@@ -177,7 +177,7 @@ onMounted(fetchClients)
 				<h1 class="text-4xl font-extrabold mb-1">Clients</h1>
 				<p class="text-gray-400">Manage your clients and their API keys.</p>
 			</div>
-			<Button class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded shadow text-lg font-semibold"
+			<Button class="px-6 py-2 rounded shadow text-lg font-semibold"
 				@click="openAddClient">
 				+ Add Client
 			</Button>

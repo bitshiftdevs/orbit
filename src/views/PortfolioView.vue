@@ -105,12 +105,12 @@ onMounted(fetchProjects)
 <template>
   <div>
     <!-- Hero Section -->
-    <div class="bg-gradient-to-br from-gray-900 to-gray-950 py-16 px-4 mb-12 rounded-xl">
+    <div class="bg-card py-16 px-4 mb-12 rounded-xl">
       <div class="max-w-4xl mx-auto text-center">
         <h1 class="text-4xl md:text-5xl font-extrabold mb-4">{{ userProfile.name }}'s Portfolio</h1>
-        <p class="text-xl text-gray-300 mb-8">{{ userProfile.tagline }}</p>
+        <p class="text-xl text-muted-foreground mb-8">{{ userProfile.tagline }}</p>
         <div class="flex flex-wrap justify-center gap-4">
-          <Button as="a" :href="`mailto:${userProfile.email}`" class="bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
+          <Button as="a" :href="`mailto:${userProfile.email}`" class="bg-primary hover:bg-primary/90 flex items-center gap-2">
             <Mail class="w-4 h-4" /> Contact Me
           </Button>
           <Button as="a" :href="`https://github.com/${userProfile.github}`" target="_blank" rel="noopener" variant="outline" class="flex items-center gap-2">
@@ -127,7 +127,7 @@ onMounted(fetchProjects)
           <Input v-model="searchTerm" placeholder="Search projects..." />
         </div>
         <div class="w-full md:w-64">
-          <select v-model="selectedTech" class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white">
+          <select v-model="selectedTech" class="w-full bg-input border border-border rounded-md px-3 py-2 text-foreground">
             <option value="">All Technologies</option>
             <option v-for="tech in availableTechnologies" :key="tech" :value="tech">{{ tech }}</option>
           </select>
@@ -138,17 +138,17 @@ onMounted(fetchProjects)
     
     <!-- Projects -->
     <div>
-      <div v-if="loading" class="text-gray-400 text-center py-12">Loading projects...</div>
-      <div v-else-if="error" class="text-red-400 text-center py-12">{{ error }}</div>
+      <div v-if="loading" class="text-muted-foreground text-center py-12">Loading projects...</div>
+      <div v-else-if="error" class="text-destructive text-center py-12">{{ error }}</div>
       <div v-else>
-        <div v-if="filteredProjects.length === 0" class="text-gray-400 text-center py-12">
+        <div v-if="filteredProjects.length === 0" class="text-muted-foreground text-center py-12">
           No completed projects found.
           <div v-if="searchTerm || selectedTech" class="mt-2">
             <Button @click="clearFilters" variant="outline">Clear Filters</Button>
           </div>
         </div>
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card v-for="project in filteredProjects" :key="project.id" class="bg-gray-900 border-gray-800 hover:border-blue-600 transition-all overflow-hidden">
+          <Card v-for="project in filteredProjects" :key="project.id" class="bg-card border-border hover:border-primary transition-all overflow-hidden">
             <div v-if="project.images && project.images.length > 0" class="h-48 overflow-hidden">
               <img :src="project.images[0]" :alt="project.name" class="w-full h-full object-cover" />
             </div>
@@ -156,13 +156,13 @@ onMounted(fetchProjects)
               <CardTitle>{{ project.name }}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p class="text-gray-400 mb-4">{{ project.description }}</p>
+              <p class="text-muted-foreground mb-4">{{ project.description }}</p>
               <div class="flex flex-wrap gap-2">
-                <span v-for="tech in project.stack" :key="tech" class="bg-gray-800 text-xs px-2 py-1 rounded">{{ tech }}</span>
+                <span v-for="tech in project.stack" :key="tech" class="bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded">{{ tech }}</span>
               </div>
             </CardContent>
             <CardFooter>
-              <Button class="w-full bg-blue-600 hover:bg-blue-700" @click="viewProjectDetails(project.id)">View Details</Button>
+              <Button class="w-full bg-primary hover:bg-primary/90" @click="viewProjectDetails(project.id)">View Details</Button>
             </CardFooter>
           </Card>
         </div>
@@ -170,10 +170,10 @@ onMounted(fetchProjects)
     </div>
     
     <!-- Skills Section -->
-    <div class="mt-16 bg-gray-900 rounded-xl p-8">
+    <div class="mt-16 bg-card rounded-xl p-8">
       <h2 class="text-2xl font-bold mb-6 text-center">My Skills</h2>
       <div class="flex flex-wrap justify-center gap-3">
-        <div v-for="skill in userProfile.skills" :key="skill" class="bg-gray-800 px-4 py-2 rounded-lg text-blue-400 font-medium">
+        <div v-for="skill in userProfile.skills" :key="skill" class="bg-secondary px-4 py-2 rounded-lg text-primary font-medium">
           {{ skill }}
         </div>
       </div>
@@ -182,8 +182,8 @@ onMounted(fetchProjects)
     <!-- Contact CTA -->
     <div class="mt-16 text-center">
       <h2 class="text-2xl font-bold mb-4">Interested in working together?</h2>
-      <p class="text-gray-400 mb-6">I'm always open to discussing new projects and opportunities.</p>
-      <Button as="a" :href="`mailto:${userProfile.email}`" size="lg" class="bg-blue-600 hover:bg-blue-700">Get in Touch</Button>
+      <p class="text-muted-foreground mb-6">I'm always open to discussing new projects and opportunities.</p>
+      <Button as="a" :href="`mailto:${userProfile.email}`" size="lg" class="bg-primary hover:bg-primary/90">Get in Touch</Button>
     </div>
   </div>
 </template> 
