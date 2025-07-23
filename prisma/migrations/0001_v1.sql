@@ -48,18 +48,16 @@ CREATE TABLE "Todo" (
 
 -- CreateTable
 CREATE TABLE "Secret" (
-    "id" TEXT NOT NULL PRIMARY KEY,
     "projectId" TEXT NOT NULL,
-    "key" TEXT NOT NULL,
+    "key" TEXT NOT NULL PRIMARY KEY,
     "value" TEXT NOT NULL,
     CONSTRAINT "Secret_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "EnvVar" (
-    "id" TEXT NOT NULL PRIMARY KEY,
     "projectId" TEXT NOT NULL,
-    "key" TEXT NOT NULL,
+    "key" TEXT NOT NULL PRIMARY KEY,
     "value" TEXT NOT NULL,
     CONSTRAINT "EnvVar_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
