@@ -2,10 +2,11 @@
 import { ref } from "vue";
 import Button from "@/components/ui/button/Button.vue";
 import Input from "@/components/ui/input/Input.vue";
+import type { Secret } from "@/lib/types";
 
 const { projectId, secrets } = defineProps<{
 	projectId: string;
-	secrets: { key: string; value: string }[];
+	secrets: Secret[];
 }>();
 
 const emit = defineEmits(["added"]);
