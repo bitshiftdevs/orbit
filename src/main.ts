@@ -1,19 +1,19 @@
 import "./assets/main.css";
+import "vue-sonner/style.css";
 
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
-import { showNotification } from "./lib/notification";
+import { notifyError } from "./lib/notify";
 
 const app = createApp(App);
-
-app.use(router);
 app.use(createPinia());
-app.config.performance = true;
-app.config.errorHandler = (err: any) => {
-  console.error(err);
-  showNotification(err.message, "error", err.error);
+app.use(router);
+
+app.config.errorHandler = (err) => {
+	console.error(err);
+	notifyError(err);
 };
 
 app.mount("#app");

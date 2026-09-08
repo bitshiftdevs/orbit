@@ -1,307 +1,194 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import Button from "@/components/ui/button/Button.vue";
-import Input from "@/components/ui/input/Input.vue";
-import Dialog from "@/components/ui/dialog/Dialog.vue";
-import DialogContent from "@/components/ui/dialog/DialogContent.vue";
-import DialogHeader from "@/components/ui/dialog/DialogHeader.vue";
-import DialogTitle from "@/components/ui/dialog/DialogTitle.vue";
-import DialogFooter from "@/components/ui/dialog/DialogFooter.vue";
-import DialogDescription from "@/components/ui/dialog/DialogDescription.vue";
-import ProjectCard from "@/components/ProjectCard.vue";
+import { onMounted, ref } from "vue";
+import { Plus } from "lucide-vue-next";
+import Badge from "@/components/ui/Badge.vue";
+import Button from "@/components/ui/Button.vue";
+import Dialog from "@/components/ui/Dialog.vue";
+import Input from "@/components/ui/Input.vue";
+import Textarea from "@/components/ui/Textarea.vue";
+import { notify, notifyError } from "@/lib/notify";
+import { useProjects } from "@/stores/projects";
+import { useSession } from "@/stores/session";
+import { timeAgo } from "@/lib/utils";
 import { useRouter } from "vue-router";
-import type { Project } from "@/lib/types";
 
-const projects = ref<Project[]>([]);
-const loading = ref(true);
-const error = ref("");
-const showProjectModal = ref(false);
-const isEditing = ref(false);
-const form = ref({
-  id: "",
-  name: "",
-  description: "",
-  status: "active",
-  stack: "", // comma separated
-  images: "", // comma separated URLs
-});
-const formErrors = ref({
-  name: "",
-  description: "",
-  status: "",
-});
-
+const session = useSession();
+const projects = useProjects();
 const router = useRouter();
 
-const fetchProjects = async () => {
-  loading.value = true;
-  error.value = "";
-  try {
-    const res = await fetch("/api/projects");
-    if (!res.ok) throw new Error("Failed to fetch projects");
-    projects.value = await res.json();
-  } catch (e: any) {
-    error.value = e.message || "Unknown error";
-  } finally {
-    loading.value = false;
-  }
-};
+const dialogOpen = ref(false);
+const form = ref({
+	key: "",
+	name: "",
+	description: "",
+	color: "#3b82f6",
+	repoUrl: "",
+	productionUrl: "",
+});
+const saving = ref(false);
 
-const openAddProject = () => {
-  isEditing.value = false;
-  form.value = {
-    id: "",
-    name: "",
-    description: "",
-    status: "active",
-    stack: "",
-    images: "",
-  };
-  formErrors.value = {
-    name: "",
-    description: "",
-    status: "",
-  };
-  showProjectModal.value = true;
-};
+onMounted(() => projects.load());
 
-const openEditProject = (project: Project) => {
-  isEditing.value = true;
-  form.value = {
-    id: project.id,
-    name: project.name,
-    description: project.description,
-    status: project.status,
-    stack: project.stack.join(","),
-    images: project.images.join(","),
-  };
-  formErrors.value = {
-    name: "",
-    description: "",
-    status: "",
-  };
-  showProjectModal.value = true;
-};
+const canCreate = () => session.user?.role !== "member";
 
-const validateForm = () => {
-  let isValid = true;
-  formErrors.value = {
-    name: "",
-    description: "",
-    status: "",
-  };
-
-  if (!form.value.name.trim()) {
-    formErrors.value.name = "Name is required";
-    isValid = false;
-  }
-
-  if (!form.value.description.trim()) {
-    formErrors.value.description = "Description is required";
-    isValid = false;
-  }
-
-  if (!form.value.status.trim()) {
-    formErrors.value.status = "Status is required";
-    isValid = false;
-  }
-
-  return isValid;
-};
-
-const saveProject = async () => {
-  if (!validateForm()) return;
-
-  const payload = {
-    name: form.value.name,
-    description: form.value.description,
-    status: form.value.status,
-    stack: form.value.stack
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-    images: form.value.images
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-  };
-  try {
-    let res;
-    if (isEditing.value && form.value.id) {
-      res = await fetch(`/api/projects/${form.value.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } else {
-      res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    }
-    if (!res.ok) throw new Error("Failed to save project");
-    showProjectModal.value = false;
-    await fetchProjects();
-  } catch (e: any) {
-    alert(e.message || "Error saving project");
-  }
-};
-
-const deleteProject = async (id: string) => {
-  if (!confirm("Delete this project?")) return;
-  try {
-    const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Failed to delete project");
-    await fetchProjects();
-  } catch (e: any) {
-    alert(e.message || "Error deleting project");
-  }
-};
-
-onMounted(fetchProjects);
+async function submit() {
+	saving.value = true;
+	try {
+		const p = await projects.create({
+			key: form.value.key.toUpperCase(),
+			name: form.value.name,
+			description: form.value.description || undefined,
+			color: form.value.color,
+			repoUrl: form.value.repoUrl || undefined,
+			productionUrl: form.value.productionUrl || undefined,
+		});
+		dialogOpen.value = false;
+		form.value = {
+			key: "",
+			name: "",
+			description: "",
+			color: "#3b82f6",
+			repoUrl: "",
+			productionUrl: "",
+		};
+		notify(`Created ${p.key}`, "success");
+		router.push({ name: "project-board", params: { key: p.key } });
+	} catch (err) {
+		notifyError(err);
+	} finally {
+		saving.value = false;
+	}
+}
 </script>
 
 <template>
-  <div>
-    <div
-      class="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4"
-    >
-      <div>
-        <h1 class="text-4xl font-extrabold mb-1">Projects</h1>
-        <p class="text-gray-400">
-          Manage and track your freelance and portfolio projects.
-        </p>
-      </div>
-      <Button class="font-bold" @click="openAddProject"> + Add Project </Button>
-    </div>
-    <div>
-      <div v-if="loading" class="text-gray-400">Loading projects...</div>
-      <div v-else-if="error" class="text-red-400">{{ error }}</div>
-      <div v-else>
-        <div v-if="projects.length === 0" class="text-gray-400">
-          No projects found.
-        </div>
-        <div
-          v-else
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
-          <ProjectCard
-            :project="project"
-            v-for="project in projects"
-            :key="project.id"
-            @edit="openEditProject"
-            @delete="deleteProject"
-            @open="(p) => router.push(`/projects/${p.id}`)"
-          />
-        </div>
-      </div>
-    </div>
-    <Dialog :open="showProjectModal" @update:open="showProjectModal = $event">
-      <DialogContent class="max-w-lg w-full bg-gray-950 text-white">
-        <DialogHeader>
-          <DialogTitle>{{ isEditing ? "Edit" : "Add" }} Project</DialogTitle>
-          <DialogDescription>
-            {{ isEditing ? "Edit" : "Add" }} a new project to your portfolio.
-          </DialogDescription>
-        </DialogHeader>
-        <form @submit.prevent="saveProject" class="space-y-4">
-          <div class="space-y-2">
-            <label
-              for="name"
-              class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >Name</label
-            >
-            <Input
-              id="name"
-              v-model="form.name"
-              required
-              placeholder="Project name"
-            />
-            <p v-if="formErrors.name" class="text-sm font-medium text-red-500">
-              {{ formErrors.name }}
-            </p>
-          </div>
+	<div class="flex-1 overflow-y-auto">
+		<header
+			class="border-b border-[var(--color-border)] px-8 py-5 flex items-center justify-between"
+		>
+			<div>
+				<h1 class="text-xl font-semibold tracking-tight">Projects</h1>
+				<p class="text-xs text-[var(--color-fg-subtle)] mt-1">
+					{{ projects.items.length }} total
+				</p>
+			</div>
+			<Button v-if="canCreate()" variant="primary" @click="dialogOpen = true">
+				<Plus class="h-4 w-4" />
+				New project
+			</Button>
+		</header>
 
-          <div class="space-y-2">
-            <label
-              for="description"
-              class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >Description</label
-            >
-            <Input
-              id="description"
-              v-model="form.description"
-              required
-              placeholder="Project description"
-            />
-            <p
-              v-if="formErrors.description"
-              class="text-sm font-medium text-red-500"
-            >
-              {{ formErrors.description }}
-            </p>
-          </div>
+		<div class="p-8">
+			<div class="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+				<router-link
+					v-for="p in projects.items"
+					:key="p.id"
+					:to="{ name: 'project-board', params: { key: p.key } }"
+					class="card card-hover p-5 flex flex-col gap-3 relative overflow-hidden"
+				>
+					<div
+						class="absolute -top-16 -right-16 h-32 w-32 rounded-full opacity-40 blur-2xl"
+						:style="{ background: p.color }"
+					/>
+					<div class="flex items-start justify-between relative">
+						<div
+							class="h-10 w-10 rounded-md grid place-items-center text-white text-sm font-bold"
+							:style="{ background: p.color }"
+						>
+							{{ p.key.slice(0, 2) }}
+						</div>
+						<Badge
+							v-if="p.status !== 'active'"
+							:tone="p.status === 'archived' ? 'slate' : 'amber'"
+						>
+							{{ p.status }}
+						</Badge>
+					</div>
+					<div class="relative">
+						<div class="mono text-[10px] text-[var(--color-fg-subtle)]">{{ p.key }}</div>
+						<h3 class="text-base font-semibold text-[var(--color-fg)]">{{ p.name }}</h3>
+						<p
+							v-if="p.description"
+							class="text-xs text-[var(--color-fg-muted)] mt-1 line-clamp-2"
+						>
+							{{ p.description }}
+						</p>
+					</div>
+					<div class="flex items-center justify-between text-[11px] text-[var(--color-fg-subtle)] pt-2 border-t border-[var(--color-border)] relative">
+						<span>{{ p.issueCounter }} issues</span>
+						<span>updated {{ timeAgo(p.updatedAt) }}</span>
+					</div>
+				</router-link>
 
-          <div class="space-y-2">
-            <label
-              for="status"
-              class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >Status</label
-            >
-            <Input
-              id="status"
-              v-model="form.status"
-              required
-              placeholder="Status (e.g. active, completed)"
-            />
-            <p
-              v-if="formErrors.status"
-              class="text-sm font-medium text-red-500"
-            >
-              {{ formErrors.status }}
-            </p>
-          </div>
+				<button
+					v-if="canCreate() && !projects.items.length"
+					class="card card-hover p-5 border-dashed flex flex-col items-center justify-center text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] py-16"
+					@click="dialogOpen = true"
+				>
+					<Plus class="h-6 w-6 mb-2" />
+					<span class="text-sm">Create your first project</span>
+				</button>
+			</div>
+		</div>
 
-          <div class="space-y-2">
-            <label
-              for="stack"
-              class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >Stack (comma separated)</label
-            >
-            <Input
-              id="stack"
-              v-model="form.stack"
-              placeholder="e.g. Vue.js, Tailwind, Cloudflare"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label
-              for="images"
-              class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >Images (comma separated URLs)</label
-            >
-            <Input
-              id="images"
-              v-model="form.images"
-              placeholder="e.g. https://..."
-            />
-          </div>
-
-          <DialogFooter class="flex gap-2 justify-end mt-6">
-            <Button
-              type="button"
-              class="bg-gray-700 hover:bg-gray-800"
-              @click="showProjectModal = false"
-              >Cancel</Button
-            >
-            <Button type="submit" class="bg-blue-600 hover:bg-blue-700"
-              >Save</Button
-            >
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  </div>
+		<Dialog
+			v-model:open="dialogOpen"
+			title="New project"
+			description="A project is a self-contained board with its own issues, sprints, secrets and files."
+			width="520px"
+		>
+			<div class="p-5 space-y-4">
+				<div class="grid grid-cols-[1fr_auto] gap-3">
+					<div class="space-y-1">
+						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
+							Name
+						</label>
+						<Input v-model="form.name" placeholder="Runner X" />
+					</div>
+					<div class="space-y-1">
+						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
+							Key
+						</label>
+						<Input
+							v-model="form.key"
+							class="w-24 mono uppercase"
+							placeholder="RUN"
+						/>
+					</div>
+				</div>
+				<div class="space-y-1">
+					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Description</label>
+					<Textarea v-model="form.description" :rows="3" placeholder="What is this project about?" />
+				</div>
+				<div class="grid grid-cols-2 gap-3">
+					<div class="space-y-1">
+						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Repo URL</label>
+						<Input v-model="form.repoUrl" placeholder="https://github.com/…" />
+					</div>
+					<div class="space-y-1">
+						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Production URL</label>
+						<Input v-model="form.productionUrl" placeholder="https://…" />
+					</div>
+				</div>
+				<div class="space-y-1">
+					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Accent</label>
+					<div class="flex gap-2">
+						<button
+							v-for="c in ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899']"
+							:key="c"
+							type="button"
+							class="h-7 w-7 rounded-md border-2 transition-transform"
+							:class="form.color === c ? 'border-white scale-105' : 'border-transparent'"
+							:style="{ background: c }"
+							@click="form.color = c"
+						/>
+					</div>
+				</div>
+			</div>
+			<template #footer>
+				<Button variant="ghost" @click="dialogOpen = false">Cancel</Button>
+				<Button variant="primary" :loading="saving" @click="submit">Create</Button>
+			</template>
+		</Dialog>
+	</div>
 </template>

@@ -1,466 +1,171 @@
+import { and, desc, eq, or } from "drizzle-orm";
 import { Hono } from "hono";
-import { getPrisma } from "../lib/prisma";
-import type { Env } from "../types";
+import { HTTPException } from "hono/http-exception";
+import { z } from "zod";
+import { getDb } from "@server/db/client";
+import { projectMembers, projects, users } from "@server/db/schema";
+import { assertMember, loadProject } from "@server/lib/access";
+import { audit } from "@server/lib/audit";
+import { requireAuth, requireRole } from "@server/middleware/auth";
+import type { AppEnv } from "@server/types";
 
-const projects = new Hono<{ Bindings: Env }>();
+const app = new Hono<AppEnv>();
+app.use("*", requireAuth);
 
-// Helper to parse JSON fields
-function parseProjectFields(project: any) {
-  return {
-    ...project,
-    stack: project.stack ? JSON.parse(project.stack) : [],
-    images: project.images ? JSON.parse(project.images) : [],
-  };
-}
-
-// Get all projects
-projects.get("/", async (c) => {
-  const prisma = getPrisma(c.env);
-  const isDashboard = c.req.query("dashboard") === "true";
-  try {
-    const allProjects = await prisma.project.findMany({
-      ...(isDashboard && {
-        include: {
-          bugs: { select: { id: true, description: true, status: true } },
-          todos: { select: { id: true, description: true, status: true } },
-        },
-      }),
-      orderBy: { createdAt: "desc" },
-    });
-
-    return c.json(allProjects.map(parseProjectFields));
-  } catch (error: any) {
-    console.error("error fetching projects", error);
-    return c.json({ error: error.message || "Failed to fetch projects" }, 500);
-  }
+const createSchema = z.object({
+	key: z
+		.string()
+		.min(2)
+		.max(10)
+		.regex(/^[A-Z][A-Z0-9]*$/, "uppercase alphanum, starts with a letter"),
+	name: z.string().min(1).max(120),
+	description: z.string().max(4000).optional(),
+	color: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/)
+		.optional(),
+	icon: z.string().max(40).optional(),
+	repoUrl: z.string().url().optional().or(z.literal("")),
+	productionUrl: z.string().url().optional().or(z.literal("")),
+	memberIds: z.array(z.string().uuid()).default([]),
 });
 
-// Get a single project with all related data
-projects.get("/:id", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id } = c.req.param();
-  try {
-    const project = await prisma.project.findUnique({
-      where: { id },
-      include: {
-        bugs: true,
-        todos: true,
-        secrets: true,
-        envVars: true,
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            company: true,
-          },
-        },
-      },
-    });
-
-    if (!project) {
-      return c.json({ error: "Project not found" }, 404);
-    }
-
-    return c.json(parseProjectFields(project));
-  } catch (error: any) {
-    return c.json({ error: error.message || "Failed to fetch project" }, 500);
-  }
+app.get("/", async (c) => {
+	const user = c.get("user");
+	const db = getDb();
+	const rows =
+		user.role === "owner"
+			? await db.select().from(projects).orderBy(desc(projects.updatedAt))
+			: await db
+					.select({ project: projects })
+					.from(projects)
+					.innerJoin(
+						projectMembers,
+						and(
+							eq(projectMembers.projectId, projects.id),
+							eq(projectMembers.userId, user.id),
+						),
+					)
+					.orderBy(desc(projects.updatedAt))
+					.then((r) => r.map((x) => x.project));
+	return c.json({ projects: rows });
 });
 
-// Create a new project
-projects.post("/", async (c) => {
-  const prisma = getPrisma(c.env);
-  try {
-    const { name, description, status, stack, images, clientId } =
-      await c.req.json();
+app.post("/", requireRole("owner", "admin"), async (c) => {
+	const body = createSchema.parse(await c.req.json());
+	const db = getDb();
+	const actor = c.get("user");
+	const [row] = await db
+		.insert(projects)
+		.values({
+			key: body.key,
+			name: body.name,
+			description: body.description,
+			color: body.color ?? "#3b82f6",
+			icon: body.icon ?? "rocket",
+			repoUrl: body.repoUrl || null,
+			productionUrl: body.productionUrl || null,
+			leadId: actor.id,
+		})
+		.returning();
 
-    // Validate required fields
-    if (!name || !description || !status) {
-      return c.json(
-        { error: "Name, description, and status are required" },
-        400,
-      );
-    }
-
-    // Prepare data with optional client relation
-    const data: any = {
-      name,
-      description,
-      status,
-      stack: JSON.stringify(stack || []),
-      images: JSON.stringify(images || []),
-    };
-
-    // Add client if provided
-    if (clientId) {
-      // Verify client exists
-      const client = await prisma.client.findUnique({
-        where: { id: clientId },
-      });
-      if (!client) {
-        return c.json({ error: "Client not found" }, 404);
-      }
-      data.clientId = clientId;
-    }
-
-    const project = await prisma.project.create({ data });
-
-    return c.json(parseProjectFields(project), 201);
-  } catch (error: any) {
-    return c.json({ error: error.message || "Failed to create project" }, 500);
-  }
+	const memberSet = new Set([actor.id, ...body.memberIds]);
+	await db.insert(projectMembers).values(
+		[...memberSet].map((userId) => ({
+			projectId: row.id,
+			userId,
+		})),
+	);
+	await audit(c, {
+		action: "project.create",
+		projectId: row.id,
+		targetName: row.key,
+	});
+	return c.json({ project: row }, 201);
 });
 
-// Update a project
-projects.put("/:id", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id } = c.req.param();
-  try {
-    const { name, description, status, stack, images, clientId } =
-      await c.req.json();
-
-    // Validate required fields
-    if (!name || !description || !status) {
-      return c.json(
-        { error: "Name, description, and status are required" },
-        400,
-      );
-    }
-
-    // Prepare data with optional client relation
-    const data: any = {
-      name,
-      description,
-      status,
-      stack: JSON.stringify(stack || []),
-      images: JSON.stringify(images || []),
-    };
-
-    // Update client if provided
-    if (clientId !== undefined) {
-      if (clientId) {
-        // Verify client exists
-        const client = await prisma.client.findUnique({
-          where: { id: clientId },
-        });
-        if (!client) {
-          return c.json({ error: "Client not found" }, 404);
-        }
-        data.clientId = clientId;
-      } else {
-        // Remove client association
-        data.clientId = null;
-      }
-    }
-
-    const project = await prisma.project.update({
-      where: { id },
-      data,
-    });
-
-    return c.json(parseProjectFields(project));
-  } catch (error: any) {
-    if (error.code === "P2025") {
-      return c.json({ error: "Project not found" }, 404);
-    }
-    return c.json({ error: error.message || "Failed to update project" }, 500);
-  }
+app.get("/:idOrKey", async (c) => {
+	const project = await loadProject(c.req.param("idOrKey"));
+	await assertMember(c.get("user"), project.id);
+	const db = getDb();
+	const members = await db
+		.select({
+			id: users.id,
+			name: users.name,
+			handle: users.handle,
+			email: users.email,
+			avatarUrl: users.avatarUrl,
+			accentColor: users.accentColor,
+			role: users.role,
+			joinedAt: projectMembers.joinedAt,
+		})
+		.from(projectMembers)
+		.innerJoin(users, eq(users.id, projectMembers.userId))
+		.where(eq(projectMembers.projectId, project.id));
+	return c.json({ project, members });
 });
 
-// Delete a project
-projects.delete("/:id", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id } = c.req.param();
-  try {
-    await prisma.project.delete({
-      where: { id },
-    });
+const updateSchema = createSchema.partial().omit({ key: true, memberIds: true });
 
-    return c.json({ success: true });
-  } catch (error: any) {
-    if (error.code === "P2025") {
-      return c.json({ error: "Project not found" }, 404);
-    }
-    return c.json({ error: error.message || "Failed to delete project" }, 500);
-  }
+app.patch("/:idOrKey", async (c) => {
+	const project = await loadProject(c.req.param("idOrKey"));
+	await assertMember(c.get("user"), project.id);
+	const body = updateSchema.parse(await c.req.json());
+	const db = getDb();
+	const [row] = await db
+		.update(projects)
+		.set({ ...body, updatedAt: new Date() })
+		.where(eq(projects.id, project.id))
+		.returning();
+	return c.json({ project: row });
 });
 
-// Assign a project to a client
-projects.post("/:id/assign-client", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id } = c.req.param();
-  try {
-    const { clientId } = await c.req.json();
-
-    // Validate required fields
-    if (!clientId) {
-      return c.json({ error: "Client ID is required" }, 400);
-    }
-
-    // Verify client exists
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
-    if (!client) {
-      return c.json({ error: "Client not found" }, 404);
-    }
-
-    const project = await prisma.project.update({
-      where: { id },
-      data: { clientId },
-    });
-
-    return c.json(parseProjectFields(project));
-  } catch (error: any) {
-    if (error.code === "P2025") {
-      return c.json({ error: "Project not found" }, 404);
-    }
-    return c.json(
-      { error: error.message || "Failed to assign client to project" },
-      500,
-    );
-  }
+app.post("/:idOrKey/members", requireRole("owner", "admin"), async (c) => {
+	const project = await loadProject(c.req.param("idOrKey"));
+	const body = z
+		.object({ userId: z.string().uuid() })
+		.parse(await c.req.json());
+	const db = getDb();
+	await db
+		.insert(projectMembers)
+		.values({ projectId: project.id, userId: body.userId })
+		.onConflictDoNothing();
+	return c.json({ ok: true });
 });
 
-// Remove client from a project
-projects.post("/:id/remove-client", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id } = c.req.param();
-  try {
-    const project = await prisma.project.update({
-      where: { id },
-      data: { clientId: null },
-    });
+app.delete(
+	"/:idOrKey/members/:userId",
+	requireRole("owner", "admin"),
+	async (c) => {
+		const project = await loadProject(c.req.param("idOrKey"));
+		const userId = c.req.param("userId");
+		const db = getDb();
+		await db
+			.delete(projectMembers)
+			.where(
+				and(
+					eq(projectMembers.projectId, project.id),
+					eq(projectMembers.userId, userId),
+				),
+			);
+		return c.json({ ok: true });
+	},
+);
 
-    return c.json(parseProjectFields(project));
-  } catch (error: any) {
-    if (error.code === "P2025") {
-      return c.json({ error: "Project not found" }, 404);
-    }
-    return c.json(
-      { error: error.message || "Failed to remove client from project" },
-      500,
-    );
-  }
+app.post("/:idOrKey/archive", requireRole("owner", "admin"), async (c) => {
+	const project = await loadProject(c.req.param("idOrKey"));
+	const db = getDb();
+	const [row] = await db
+		.update(projects)
+		.set({ status: "archived", updatedAt: new Date() })
+		.where(eq(projects.id, project.id))
+		.returning();
+	await audit(c, {
+		action: "project.archive",
+		projectId: row.id,
+		targetName: row.key,
+	});
+	return c.json({ project: row });
 });
 
-// Add a bug to a project
-projects.post("/:id/bugs", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id: projectId } = c.req.param();
-  try {
-    const { description, status } = await c.req.json();
-
-    if (!description) {
-      return c.json({ error: "Description is required" }, 400);
-    }
-
-    const bug = await prisma.bug.create({
-      data: {
-        projectId,
-        description,
-        status: status || "open",
-      },
-    });
-
-    return c.json(bug, 201);
-  } catch (error: any) {
-    return c.json({ error: error.message || "Failed to add bug" }, 500);
-  }
-});
-
-// Add a client bug to a project
-projects.post("/:id/bugs/client", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id: projectId } = c.req.param();
-  try {
-    const { description, status, apiKey } = await c.req.json();
-
-    if (!description) {
-      return c.json({ error: "Description is required" }, 400);
-    }
-
-    if (!apiKey) {
-      return c.json({ error: "API key is required" }, 401);
-    }
-
-    // Verify client by API key
-    const client = await prisma.client.findUnique({
-      where: { apiKey },
-    });
-
-    if (!client) {
-      return c.json({ error: "Invalid API key" }, 401);
-    }
-
-    const bug = await prisma.bug.create({
-      data: {
-        projectId,
-        description,
-        status: status || "open",
-        clientId: client.id,
-      },
-    });
-
-    return c.json(bug, 201);
-  } catch (error: any) {
-    return c.json({ error: error.message || "Failed to add bug" }, 500);
-  }
-});
-
-// Add a todo to a project
-projects.post("/:id/todos", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id: projectId } = c.req.param();
-  try {
-    const { description, status } = await c.req.json();
-
-    if (!description) {
-      return c.json({ error: "Description is required" }, 400);
-    }
-
-    const todo = await prisma.todo.create({
-      data: {
-        projectId,
-        description,
-        status: status || "todo",
-      },
-    });
-
-    return c.json(todo, 201);
-  } catch (error: any) {
-    return c.json({ error: error.message || "Failed to add todo" }, 500);
-  }
-});
-
-// Add a client todo to a project
-projects.post("/:id/todos/client", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id: projectId } = c.req.param();
-  try {
-    const { description, status, apiKey } = await c.req.json();
-
-    if (!description) {
-      return c.json({ error: "Description is required" }, 400);
-    }
-
-    if (!apiKey) {
-      return c.json({ error: "API key is required" }, 401);
-    }
-
-    // Verify client by API key
-    const client = await prisma.client.findUnique({
-      where: { apiKey },
-    });
-
-    if (!client) {
-      return c.json({ error: "Invalid API key" }, 401);
-    }
-
-    const todo = await prisma.todo.create({
-      data: {
-        projectId,
-        description,
-        status: status || "todo",
-        clientId: client.id,
-      },
-    });
-
-    return c.json(todo, 201);
-  } catch (error: any) {
-    return c.json({ error: error.message || "Failed to add todo" }, 500);
-  }
-});
-
-// Add a secret to a project
-projects.post("/:id/secrets", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id: projectId } = c.req.param();
-  try {
-    const { key, value } = await c.req.json();
-
-    if (!key || !value) {
-      return c.json({ error: "Key and value are required" }, 400);
-    }
-
-    // In a real app, you'd encrypt the value here
-    const secret = await prisma.secret.create({
-      data: {
-        projectId,
-        key,
-        value,
-      },
-    });
-
-    return c.json(secret, 201);
-  } catch (error: any) {
-    return c.json({ error: error.message || "Failed to add secret" }, 500);
-  }
-});
-
-// Add an environment variable to a project
-projects.post("/:id/envvars", async (c) => {
-  const prisma = getPrisma(c.env);
-  const { id: projectId } = c.req.param();
-  try {
-    const { key, value } = await c.req.json();
-
-    if (!key || !value) {
-      return c.json({ error: "Key and value are required" }, 400);
-    }
-
-    // In a real app, you might encrypt sensitive values
-    const envVar = await prisma.envVar.create({
-      data: {
-        projectId,
-        key,
-        value,
-      },
-    });
-
-    return c.json(envVar, 201);
-  } catch (error: any) {
-    return c.json(
-      { error: error.message || "Failed to add environment variable" },
-      500,
-    );
-  }
-});
-
-// Get project statistics
-projects.get("/stats", async (c) => {
-  const prisma = getPrisma(c.env);
-  try {
-    const totalProjects = await prisma.project.count();
-    const activeProjects = await prisma.project.count({
-      where: { status: "active" },
-    });
-    const completedProjects = await prisma.project.count({
-      where: { status: "completed" },
-    });
-    const totalBugs = await prisma.bug.count();
-    const openBugs = await prisma.bug.count({
-      where: { status: "open" },
-    });
-    const totalTodos = await prisma.todo.count();
-    const pendingTodos = await prisma.todo.count({
-      where: { status: "todo" },
-    });
-
-    return c.json({
-      totalProjects,
-      activeProjects,
-      completedProjects,
-      totalBugs,
-      openBugs,
-      totalTodos,
-      pendingTodos,
-    });
-  } catch (error: any) {
-    return c.json(
-      { error: error.message || "Failed to fetch statistics" },
-      500,
-    );
-  }
-});
-
-export default projects;
+export default app;
