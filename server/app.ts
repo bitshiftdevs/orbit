@@ -15,6 +15,7 @@ import webhooks from "./routes/webhooks";
 import filters from "./routes/filters";
 import mfa from "./routes/mfa";
 import search from "./routes/search";
+import mcp from "./routes/mcp";
 import type { AppEnv } from "./types";
 
 export function createApp() {
@@ -38,6 +39,7 @@ export function createApp() {
 	app.route("/", webhooks);
 	app.route("/", filters);
 	app.route("/search", search);
+	app.route("/mcp", mcp);
 
 	app.onError((err, c) => {
 		if (err instanceof HTTPException) {

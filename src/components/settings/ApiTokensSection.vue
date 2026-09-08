@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { Copy, KeyRound, Trash2 } from "lucide-vue-next";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
@@ -18,6 +18,22 @@ const tokens = ref<ApiToken[]>([]);
 const tokenOpen = ref(false);
 const tokenForm = ref({ name: "", expiresInDays: "" });
 const freshToken = ref<string | null>(null);
+
+const mcpConfig = computed(() =>
+	JSON.stringify(
+		{
+			mcpServers: {
+				orbit: {
+					type: "http",
+					url: `${location.origin}/api/mcp`,
+					headers: { Authorization: `Bearer ${freshToken.value}` },
+				},
+			},
+		},
+		null,
+		2,
+	),
+);
 
 async function loadTokens() {
 	try {
@@ -130,9 +146,9 @@ onMounted(loadTokens);
 					/>
 				</div>
 			</div>
-			<div v-else class="space-y-3">
+			<div v-else class="space-y-4">
 				<p class="text-xs text-[var(--color-fg-muted)]">
-					Copy this now — it won't be shown again.
+					Copy this token now — it won't be shown again.
 				</p>
 				<div class="flex items-center gap-2 p-3 rounded border border-[var(--color-accent)]/40 bg-[var(--color-accent-soft)]">
 					<code class="mono text-xs flex-1 break-all">{{ freshToken }}</code>
@@ -140,8 +156,26 @@ onMounted(loadTokens);
 						<Copy class="h-3 w-3" />
 					</Button>
 				</div>
-				<pre class="mono text-xs p-3 rounded bg-[var(--color-bg-elevated)] border border-[var(--color-border)] overflow-x-auto">curl -H "Authorization: Bearer {{ freshToken }}" \
-  {{ location.origin }}/api/projects</pre>
+
+				<div class="space-y-1.5">
+					<p class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)] font-semibold">
+						MCP configuration
+					</p>
+					<p class="text-xs text-[var(--color-fg-muted)]">
+						Paste this into your AI tool's MCP settings (Claude Code, Cursor, etc.) to let it read and manage your Orbit projects directly.
+					</p>
+					<div class="relative">
+						<pre class="mono text-xs p-3 rounded bg-[var(--color-bg-elevated)] border border-[var(--color-border)] overflow-x-auto">{{ mcpConfig }}</pre>
+						<Button
+							size="sm"
+							variant="outline"
+							class="absolute top-2 right-2"
+							@click="copy(mcpConfig)"
+						>
+							<Copy class="h-3 w-3" />
+						</Button>
+					</div>
+				</div>
 			</div>
 		</div>
 		<template #footer>

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "orbit": {
+      "command": "bun",
+      "args": ["run", "server/mcp.ts"],
+      "env": {
+        "ORBIT_BASE_URL": "http://localhost:8888",
+        "ORBIT_API_TOKEN": ""
+      }
+    }
+  }
+}
