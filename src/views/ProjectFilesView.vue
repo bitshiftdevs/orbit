@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
-import { Download, Eye, File as FileIcon, Trash2, Upload } from "lucide-vue-next";
+import { Download, Eye, File as FileIcon, RefreshCw, Trash2, Upload } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
 import FilePreview from "@/components/files/FilePreview.vue";
 import { api } from "@/lib/api";
@@ -17,18 +17,23 @@ const uploading = ref(false);
 const dragOver = ref(false);
 const inputRef = ref<HTMLInputElement | null>(null);
 const previewing = ref<FileRow | null>(null);
+const refreshing = ref(false);
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-async function load() {
+async function load(force = false) {
 	if (!project.value) return;
+	refreshing.value = true;
 	try {
 		const { files: rows } = await api.get<{ files: FileRow[] }>(
 			`/projects/${project.value.key}/files`,
+			{ force },
 		);
 		files.value = rows;
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		refreshing.value = false;
 	}
 }
 
@@ -97,10 +102,20 @@ function onFileSaved(updated: FileRow) {
 			<div class="text-xs text-[var(--color-fg-subtle)]">
 				{{ files.length }} files · 5 MB per-file cap
 			</div>
-			<Button variant="primary" size="sm" :loading="uploading" @click="inputRef?.click()">
-				<Upload class="h-3.5 w-3.5" />
-				Upload
-			</Button>
+			<div class="flex items-center gap-2">
+				<button
+					class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+					title="Refresh"
+					:disabled="refreshing"
+					@click="load(true)"
+				>
+					<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
+				</button>
+				<Button variant="primary" size="sm" :loading="uploading" @click="inputRef?.click()">
+					<Upload class="h-3.5 w-3.5" />
+					Upload
+				</Button>
+			</div>
 			<input
 				ref="inputRef"
 				type="file"

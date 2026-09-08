@@ -59,7 +59,8 @@ async function request<T = unknown>(
 }
 
 export const api = {
-	get: <T = unknown>(p: string) => request<T>(p),
+	get: <T = unknown>(p: string, { force }: { force?: boolean } = {}) =>
+		request<T>(p, force ? { cache: "reload" } : {}),
 	post: <T = unknown>(p: string, body?: unknown) =>
 		request<T>(p, {
 			method: "POST",

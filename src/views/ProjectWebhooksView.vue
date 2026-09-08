@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
-import { Copy, ExternalLink, Plus, Radio, Trash2, Webhook as WebhookIcon } from "lucide-vue-next";
+import { Copy, ExternalLink, Plus, Radio, RefreshCw, Trash2, Webhook as WebhookIcon } from "lucide-vue-next";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
@@ -44,15 +44,21 @@ const ALL_EVENTS = [
 	"secret.created",
 ];
 
-async function load() {
+const refreshing = ref(false);
+
+async function load(force = false) {
 	if (!project.value) return;
+	refreshing.value = true;
 	try {
 		const { webhooks } = await api.get<{ webhooks: Webhook[] }>(
 			`/projects/${project.value.key}/webhooks`,
+			{ force },
 		);
 		hooks.value = webhooks;
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		refreshing.value = false;
 	}
 }
 
@@ -136,10 +142,20 @@ function pickPreset(p: WebhookPreset) {
 			<div class="text-xs text-[var(--color-fg-subtle)]">
 				{{ hooks.length }} endpoints · HMAC-signed with SHA-256
 			</div>
-			<Button variant="primary" size="sm" @click="dialogOpen = true">
-				<Plus class="h-3.5 w-3.5" />
-				New webhook
-			</Button>
+			<div class="flex items-center gap-2">
+				<button
+					class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+					title="Refresh"
+					:disabled="refreshing"
+					@click="load(true)"
+				>
+					<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
+				</button>
+				<Button variant="primary" size="sm" @click="dialogOpen = true">
+					<Plus class="h-3.5 w-3.5" />
+					New webhook
+				</Button>
+			</div>
 		</div>
 
 		<div class="flex-1 overflow-y-auto p-8 space-y-3">

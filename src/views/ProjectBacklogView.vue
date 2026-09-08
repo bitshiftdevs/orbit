@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref, type Ref } from "vue";
-import { Bookmark, ListChecks, Plus, X } from "lucide-vue-next";
+import { Bookmark, ListChecks, Plus, RefreshCw, X } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
@@ -51,19 +51,24 @@ const activeFilterId = ref<string | null>(null);
 const selected = ref<Set<string>>(new Set());
 const bulkOpen = ref(false);
 
-async function load() {
+const refreshing = ref(false);
+
+async function load(force = false) {
 	if (!project.value) return;
+	refreshing.value = true;
 	try {
 		const [{ issues: rows }, { filters }, { sprints: sprintRows }] = await Promise.all([
-			api.get<{ issues: Issue[] }>(`/projects/${project.value.key}/issues`),
-			api.get<{ filters: SavedFilter[] }>(`/projects/${project.value.key}/filters`),
-			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`),
+			api.get<{ issues: Issue[] }>(`/projects/${project.value.key}/issues`, { force }),
+			api.get<{ filters: SavedFilter[] }>(`/projects/${project.value.key}/filters`, { force }),
+			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`, { force }),
 		]);
 		issues.value = rows;
 		savedFilters.value = filters;
 		sprints.value = sprintRows;
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		refreshing.value = false;
 	}
 }
 
@@ -226,6 +231,14 @@ async function applyBulk(patch: BulkIssuePatch) {
 				<Bookmark class="h-3.5 w-3.5" />
 				Save filter
 			</Button>
+			<button
+				class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+				title="Refresh"
+				:disabled="refreshing"
+				@click="load(true)"
+			>
+				<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
+			</button>
 			<Button variant="primary" size="sm" @click="newDialog = true">
 				<Plus class="h-3.5 w-3.5" />
 				New issue

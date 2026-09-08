@@ -25,6 +25,24 @@ export function createApp() {
 		c.json({ ok: true, ts: new Date().toISOString() }),
 	);
 
+	// Cache GET responses for 30 s; stale-while-revalidate lets the browser
+	// serve the cached copy instantly while fetching a fresh one in the background.
+	// Excluded: auth, MCP (stateful protocol), and notifications (user-specific, fetched on demand).
+	app.use("*", async (c, next) => {
+		await next();
+		const method = c.req.method;
+		const path = c.req.path;
+		const skip =
+			path.startsWith("/api/auth") ||
+			path.startsWith("/api/mcp") ||
+			path.startsWith("/api/notifications");
+		if (method === "GET" && !skip) {
+			c.header("Cache-Control", "max-age=30, stale-while-revalidate=60");
+		} else {
+			c.header("Cache-Control", "no-store");
+		}
+	});
+
 	app.route("/auth", auth);
 	app.route("/auth/mfa", mfa);
 	app.route("/projects", projects);

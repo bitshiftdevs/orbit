@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref, type Ref } from "vue";
-import { Copy, Download, Eye, EyeOff, Plus, Trash2 } from "lucide-vue-next";
+import { Copy, Download, Eye, EyeOff, Plus, RefreshCw, Trash2 } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
@@ -30,17 +30,22 @@ const envByScope = computed(() =>
 	envVars.value.filter((e) => e.scope === activeScope.value),
 );
 
-async function load() {
+const refreshing = ref(false);
+
+async function load(force = false) {
 	if (!project.value) return;
+	refreshing.value = true;
 	try {
 		const [{ secrets: s }, { envVars: e }] = await Promise.all([
-			api.get<{ secrets: Secret[] }>(`/projects/${project.value.key}/secrets`),
-			api.get<{ envVars: EnvVar[] }>(`/projects/${project.value.key}/env`),
+			api.get<{ secrets: Secret[] }>(`/projects/${project.value.key}/secrets`, { force }),
+			api.get<{ envVars: EnvVar[] }>(`/projects/${project.value.key}/env`, { force }),
 		]);
 		secrets.value = s;
 		envVars.value = e;
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		refreshing.value = false;
 	}
 }
 
@@ -157,9 +162,19 @@ function downloadDotEnv() {
 
 <template>
 	<div class="h-full flex flex-col overflow-hidden">
-		<div class="px-8 py-3 border-b border-[var(--color-border)] text-xs text-[var(--color-fg-subtle)] flex items-center gap-2">
-			<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dot-pulse" />
-			Encrypted at rest with AES-256-GCM · reveal events are audit-logged
+		<div class="px-8 py-3 border-b border-[var(--color-border)] text-xs text-[var(--color-fg-subtle)] flex items-center justify-between">
+			<div class="flex items-center gap-2">
+				<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dot-pulse" />
+				Encrypted at rest with AES-256-GCM · reveal events are audit-logged
+			</div>
+			<button
+				class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+				title="Refresh"
+				:disabled="refreshing"
+				@click="load(true)"
+			>
+				<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
+			</button>
 		</div>
 		<div class="flex-1 overflow-y-auto px-8 py-6 space-y-10">
 			<section>

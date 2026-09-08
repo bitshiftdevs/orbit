@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { Plus } from "lucide-vue-next";
+import { Plus, RefreshCw } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
 import IssueDrawer from "@/components/issue/IssueDrawer.vue";
 import KanbanBoard from "@/components/issue/KanbanBoard.vue";
@@ -31,18 +31,22 @@ const boardIssues = computed(() =>
 );
 const newDialog = ref(false);
 const newStatus = ref<IssueStatus>("todo");
+const refreshing = ref(false);
 
-async function load() {
+async function load(force = false) {
 	if (!project.value) return;
+	refreshing.value = true;
 	try {
 		const [{ issues: rows }, { sprints: sprintRows }] = await Promise.all([
-			api.get<{ issues: Issue[] }>(`/projects/${project.value.key}/issues`),
-			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`),
+			api.get<{ issues: Issue[] }>(`/projects/${project.value.key}/issues`, { force }),
+			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`, { force }),
 		]);
 		issues.value = rows;
 		sprints.value = sprintRows;
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		refreshing.value = false;
 	}
 }
 
@@ -109,10 +113,20 @@ function newIn(status: IssueStatus) {
 				<span v-else class="text-xs text-[var(--color-fg-subtle)]">no active sprint</span>
 				<span class="text-xs text-[var(--color-fg-subtle)]">· {{ boardIssues.length }} issues</span>
 			</div>
-			<Button variant="primary" size="sm" @click="newIn('todo')">
-				<Plus class="h-3.5 w-3.5" />
-				New issue
-			</Button>
+			<div class="flex items-center gap-2">
+				<button
+					class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+					title="Refresh"
+					:disabled="refreshing"
+					@click="load(true)"
+				>
+					<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
+				</button>
+				<Button variant="primary" size="sm" @click="newIn('todo')">
+					<Plus class="h-3.5 w-3.5" />
+					New issue
+				</Button>
+			</div>
 		</div>
 		<div v-if="project" class="flex-1 overflow-hidden px-8 py-4">
 			<KanbanBoard

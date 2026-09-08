@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { Copy, Mail, Plus } from "lucide-vue-next";
+import { Copy, Mail, Plus, RefreshCw } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
@@ -18,19 +18,23 @@ const invites = ref<Array<{ id: string; email: string; role: string; expiresAt: 
 const dialogOpen = ref(false);
 const form = ref({ email: "", role: "member" });
 const lastInviteUrl = ref<string | null>(null);
+const refreshing = ref(false);
 
-async function load() {
+async function load(force = false) {
+	refreshing.value = true;
 	try {
 		const [{ team: t }, { invites: i }] = await Promise.all([
-			api.get<{ team: SessionUser[] }>("/team"),
+			api.get<{ team: SessionUser[] }>("/team", { force }),
 			api
-				.get<{ invites: typeof invites.value }>("/auth/invites")
+				.get<{ invites: typeof invites.value }>("/auth/invites", { force })
 				.catch(() => ({ invites: [] })),
 		]);
 		team.value = t;
 		invites.value = i;
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		refreshing.value = false;
 	}
 }
 
@@ -64,10 +68,20 @@ const canInvite = () => session.user?.role !== "member";
 					{{ team.length }} members
 				</p>
 			</div>
-			<Button v-if="canInvite()" variant="primary" @click="dialogOpen = true">
-				<Plus class="h-4 w-4" />
-				Invite
-			</Button>
+			<div class="flex items-center gap-2">
+				<button
+					class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+					title="Refresh"
+					:disabled="refreshing"
+					@click="load(true)"
+				>
+					<RefreshCw class="h-4 w-4" :class="refreshing && 'animate-spin'" />
+				</button>
+				<Button v-if="canInvite()" variant="primary" @click="dialogOpen = true">
+					<Plus class="h-4 w-4" />
+					Invite
+				</Button>
+			</div>
 		</header>
 
 		<div class="p-8 space-y-8">

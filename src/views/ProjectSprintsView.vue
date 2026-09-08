@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
-import { BarChart3, Play, Plus, Check } from "lucide-vue-next";
+import { BarChart3, Play, Plus, Check, RefreshCw } from "lucide-vue-next";
 import Badge from "@/components/ui/Badge.vue";
 import BurndownChart from "@/components/BurndownChart.vue";
 import Button from "@/components/ui/Button.vue";
@@ -17,16 +17,21 @@ const project = inject<Ref<Project | null>>("project")!;
 const sprints = ref<Sprint[]>([]);
 const dialogOpen = ref(false);
 const form = ref({ name: "", goal: "", startsAt: "", endsAt: "" });
+const refreshing = ref(false);
 
-async function load() {
+async function load(force = false) {
 	if (!project.value) return;
+	refreshing.value = true;
 	try {
 		const { sprints: rows } = await api.get<{ sprints: Sprint[] }>(
 			`/projects/${project.value.key}/sprints`,
+			{ force },
 		);
 		sprints.value = rows;
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		refreshing.value = false;
 	}
 }
 
@@ -98,10 +103,20 @@ async function toggleBurndown(s: Sprint) {
 			<div class="text-xs text-[var(--color-fg-subtle)]">
 				{{ sprints.length }} sprints
 			</div>
-			<Button variant="primary" size="sm" @click="dialogOpen = true">
-				<Plus class="h-3.5 w-3.5" />
-				New sprint
-			</Button>
+			<div class="flex items-center gap-2">
+				<button
+					class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+					title="Refresh"
+					:disabled="refreshing"
+					@click="load(true)"
+				>
+					<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
+				</button>
+				<Button variant="primary" size="sm" @click="dialogOpen = true">
+					<Plus class="h-3.5 w-3.5" />
+					New sprint
+				</Button>
+			</div>
 		</div>
 
 		<div class="flex-1 overflow-y-auto px-8 py-4 space-y-3">

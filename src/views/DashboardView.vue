@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { Sparkles } from "lucide-vue-next";
+import { RefreshCw, Sparkles } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import Badge from "@/components/ui/Badge.vue";
 import { api, type Issue } from "@/lib/api";
@@ -13,26 +13,35 @@ const projectStore = useProjects();
 
 const mine = ref<Array<Issue & { projectKey: string }>>([]);
 const loading = ref(true);
+const refreshing = ref(false);
 
-onMounted(async () => {
-	await projectStore.load();
-	// Fetch issues across all my projects.
-	const all: Array<Issue & { projectKey: string }> = [];
-	for (const p of projectStore.items) {
-		try {
-			const { issues } = await api.get<{ issues: Issue[] }>(
-				`/projects/${p.key}/issues`,
-			);
-			for (const i of issues) {
-				if (i.assigneeId === session.user?.id && i.status !== "done" && i.status !== "cancelled") {
-					all.push({ ...i, projectKey: p.key });
+async function load(force = false) {
+	refreshing.value = true;
+	loading.value = true;
+	try {
+		await projectStore.load();
+		const all: Array<Issue & { projectKey: string }> = [];
+		for (const p of projectStore.items) {
+			try {
+				const { issues } = await api.get<{ issues: Issue[] }>(
+					`/projects/${p.key}/issues`,
+					{ force },
+				);
+				for (const i of issues) {
+					if (i.assigneeId === session.user?.id && i.status !== "done" && i.status !== "cancelled") {
+						all.push({ ...i, projectKey: p.key });
+					}
 				}
-			}
-		} catch {}
+			} catch {}
+		}
+		mine.value = all;
+	} finally {
+		loading.value = false;
+		refreshing.value = false;
 	}
-	mine.value = all;
-	loading.value = false;
-});
+}
+
+onMounted(load);
 </script>
 
 <template>
@@ -47,10 +56,20 @@ onMounted(async () => {
 					{{ new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) }}
 				</p>
 			</div>
-			<Badge tone="blue" dot>
-				<Sparkles class="h-3 w-3 mr-1" />
-				{{ mine.length }} open · assigned to you
-			</Badge>
+			<div class="flex items-center gap-3">
+				<button
+					class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+					title="Refresh"
+					:disabled="refreshing"
+					@click="load(true)"
+				>
+					<RefreshCw class="h-4 w-4" :class="refreshing && 'animate-spin'" />
+				</button>
+				<Badge tone="blue" dot>
+					<Sparkles class="h-3 w-3 mr-1" />
+					{{ mine.length }} open · assigned to you
+				</Badge>
+			</div>
 		</header>
 
 		<div class="p-8 grid gap-8 xl:grid-cols-3">

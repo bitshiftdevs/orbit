@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
+import { RefreshCw } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import Badge from "@/components/ui/Badge.vue";
 import { api, type AuditEntry, type Project } from "@/lib/api";
@@ -8,16 +9,21 @@ import { timeAgo } from "@/lib/utils";
 
 const project = inject<Ref<Project | null>>("project")!;
 const entries = ref<AuditEntry[]>([]);
+const refreshing = ref(false);
 
-async function load() {
+async function load(force = false) {
 	if (!project.value) return;
+	refreshing.value = true;
 	try {
 		const { entries: rows } = await api.get<{ entries: AuditEntry[] }>(
 			`/projects/${project.value.key}/audit`,
+			{ force },
 		);
 		entries.value = rows;
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		refreshing.value = false;
 	}
 }
 
@@ -33,8 +39,16 @@ function toneFor(action: string) {
 
 <template>
 	<div class="h-full flex flex-col overflow-hidden">
-		<div class="px-8 py-3 border-b border-[var(--color-border)] text-xs text-[var(--color-fg-subtle)]">
-			last 200 events in this project
+		<div class="px-8 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
+			<span class="text-xs text-[var(--color-fg-subtle)]">last 200 events in this project</span>
+			<button
+				class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
+				title="Refresh"
+				:disabled="refreshing"
+				@click="load(true)"
+			>
+				<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
+			</button>
 		</div>
 		<div class="flex-1 overflow-y-auto p-8">
 			<div class="card divide-y divide-[var(--color-border)]">
