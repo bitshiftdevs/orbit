@@ -83,6 +83,24 @@ app.post("/projects/:idOrKey/files", async (c) => {
 	return c.json({ file: row }, 201);
 });
 
+app.get("/files/:id/preview", async (c) => {
+	const db = getDb();
+	const [row] = await db
+		.select()
+		.from(files)
+		.where(eq(files.id, c.req.param("id")))
+		.limit(1);
+	if (!row) throw new HTTPException(404, { message: "file not found" });
+	await assertMember(c.get("user"), row.projectId);
+	return new Response(row.data, {
+		headers: {
+			"content-type": row.mimeType,
+			"content-length": String(row.sizeBytes),
+			"content-disposition": `inline; filename="${encodeURIComponent(row.name)}"`,
+		},
+	});
+});
+
 app.get("/files/:id/download", async (c) => {
 	const db = getDb();
 	const [row] = await db

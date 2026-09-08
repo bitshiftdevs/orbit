@@ -69,6 +69,7 @@ function download(f: FileRow) {
 }
 
 const previewing = ref<FileRow | null>(null);
+const previewBlobUrl = ref<string | null>(null);
 const previewText = ref<string | null>(null);
 const previewLoading = ref(false);
 
@@ -86,26 +87,32 @@ function previewable(f: FileRow) {
 
 async function openPreview(f: FileRow) {
 	previewing.value = f;
+	previewBlobUrl.value = null;
 	previewText.value = null;
-	const isText =
-		f.mimeType.startsWith("text/") ||
-		f.mimeType === "application/json" ||
-		f.mimeType === "application/xml";
-	if (isText) {
-		previewLoading.value = true;
-		try {
-			const res = await fetch(`/api/files/${f.id}/download`, { credentials: "include" });
+	previewLoading.value = true;
+	try {
+		const res = await fetch(`/api/files/${f.id}/preview`, { credentials: "include" });
+		const isText =
+			f.mimeType.startsWith("text/") ||
+			f.mimeType === "application/json" ||
+			f.mimeType === "application/xml";
+		if (isText) {
 			previewText.value = await res.text();
-		} catch {
-			previewText.value = null;
-		} finally {
-			previewLoading.value = false;
+		} else {
+			const blob = await res.blob();
+			previewBlobUrl.value = URL.createObjectURL(blob);
 		}
+	} catch {
+		previewText.value = null;
+	} finally {
+		previewLoading.value = false;
 	}
 }
 
 function closePreview() {
+	if (previewBlobUrl.value) URL.revokeObjectURL(previewBlobUrl.value);
 	previewing.value = null;
+	previewBlobUrl.value = null;
 	previewText.value = null;
 }
 
@@ -158,13 +165,13 @@ function onPreviewKey(e: KeyboardEvent) {
 					>
 						<img
 							v-if="f.mimeType.startsWith('image/')"
-							:src="`/api/files/${f.id}/download`"
+							:src="`/api/files/${f.id}/preview`"
 							:alt="f.name"
 							class="h-full w-full object-cover"
 						/>
 						<embed
 							v-else-if="f.mimeType === 'application/pdf'"
-							:src="`/api/files/${f.id}/download#toolbar=0&navpanes=0`"
+							:src="`/api/files/${f.id}/preview#toolbar=0&navpanes=0`"
 							type="application/pdf"
 							class="h-full w-full"
 						/>
@@ -241,33 +248,33 @@ function onPreviewKey(e: KeyboardEvent) {
 				<div class="flex-1 overflow-auto flex items-center justify-center p-6" @click.self="closePreview">
 					<div v-if="previewLoading" class="text-white/50 text-sm">Loading…</div>
 
-					<img
-						v-else-if="previewing.mimeType.startsWith('image/')"
-						:src="`/api/files/${previewing.id}/download`"
-						:alt="previewing.name"
-						class="max-h-full max-w-full object-contain rounded"
-					/>
-
-					<iframe
-						v-else-if="previewing.mimeType === 'application/pdf'"
-						:src="`/api/files/${previewing.id}/download`"
-						class="w-full h-full rounded border-0"
-						style="min-height: 70vh"
-					/>
-
-					<video
-						v-else-if="previewing.mimeType.startsWith('video/')"
-						:src="`/api/files/${previewing.id}/download`"
-						controls
-						class="max-h-full max-w-full rounded"
-					/>
-
-					<audio
-						v-else-if="previewing.mimeType.startsWith('audio/')"
-						:src="`/api/files/${previewing.id}/download`"
-						controls
-						class="w-80"
-					/>
+					<template v-else-if="previewBlobUrl">
+						<img
+							v-if="previewing.mimeType.startsWith('image/')"
+							:src="previewBlobUrl"
+							:alt="previewing.name"
+							class="max-h-full max-w-full object-contain rounded"
+						/>
+						<embed
+							v-else-if="previewing.mimeType === 'application/pdf'"
+							:src="previewBlobUrl"
+							type="application/pdf"
+							class="w-full rounded"
+							style="height: 80vh"
+						/>
+						<video
+							v-else-if="previewing.mimeType.startsWith('video/')"
+							:src="previewBlobUrl"
+							controls
+							class="max-h-full max-w-full rounded"
+						/>
+						<audio
+							v-else-if="previewing.mimeType.startsWith('audio/')"
+							:src="previewBlobUrl"
+							controls
+							class="w-80"
+						/>
+					</template>
 
 					<pre
 						v-else-if="previewText !== null"
