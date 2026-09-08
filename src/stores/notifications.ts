@@ -23,7 +23,6 @@ export type Notification = {
 export const useNotifications = defineStore("notifications", () => {
 	const items = ref<Notification[]>([]);
 	const unread = ref(0);
-	let pollHandle: number | null = null;
 
 	async function refresh() {
 		try {
@@ -51,19 +50,6 @@ export const useNotifications = defineStore("notifications", () => {
 		}
 	}
 
-	function startPolling() {
-		if (pollHandle) return;
-		refresh();
-		pollHandle = window.setInterval(refresh, 30_000);
-	}
-
-	function stopPolling() {
-		if (pollHandle) {
-			clearInterval(pollHandle);
-			pollHandle = null;
-		}
-	}
-
 	return {
 		items,
 		unread,
@@ -71,7 +57,5 @@ export const useNotifications = defineStore("notifications", () => {
 		refresh,
 		markAllRead,
 		markRead,
-		startPolling,
-		stopPolling,
 	};
 });

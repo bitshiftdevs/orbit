@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { AtSign, Bell, MessageSquare, UserCheck } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
@@ -11,20 +11,16 @@ const open = ref(false);
 const router = useRouter();
 const containerRef = ref<HTMLElement | null>(null);
 
+watch(open, (val) => { if (val) store.refresh(); });
+
 function onClickOutside(e: MouseEvent) {
 	if (open.value && containerRef.value && !containerRef.value.contains(e.target as Node)) {
 		open.value = false;
 	}
 }
 
-onMounted(() => {
-	store.startPolling();
-	document.addEventListener("mousedown", onClickOutside);
-});
-onUnmounted(() => {
-	store.stopPolling();
-	document.removeEventListener("mousedown", onClickOutside);
-});
+onMounted(() => document.addEventListener("mousedown", onClickOutside));
+onUnmounted(() => document.removeEventListener("mousedown", onClickOutside));
 
 const iconFor = {
 	mention: AtSign,
