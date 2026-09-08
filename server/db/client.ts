@@ -13,6 +13,7 @@ export function getDb() {
 		max: 5,
 		idle_timeout: 30,
 		prepare: false,
+		ssl: { rejectUnauthorized: false },
 	});
 	cachedDb = drizzle(cachedSql, { schema, casing: "snake_case" });
 	return cachedDb;
