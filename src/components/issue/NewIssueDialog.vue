@@ -5,14 +5,16 @@ import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
 import Select from "@/components/ui/Select.vue";
 import Textarea from "@/components/ui/Textarea.vue";
-import { api, type Issue, type IssueStatus, type SessionUser } from "@/lib/api";
+import { api, type Issue, type IssueStatus, type SessionUser, type Sprint } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 
 const props = defineProps<{
 	open: boolean;
 	projectKey: string;
 	defaultStatus?: IssueStatus;
+	defaultSprintId?: string;
 	members: Array<Pick<SessionUser, "id" | "name">>;
+	sprints?: Sprint[];
 }>();
 
 const emit = defineEmits<{
@@ -26,6 +28,7 @@ const type = ref("task");
 const priority = ref("medium");
 const status = ref<IssueStatus>("todo");
 const assigneeId = ref("");
+const sprintId = ref("");
 const saving = ref(false);
 
 watch(
@@ -38,6 +41,7 @@ watch(
 			priority.value = "medium";
 			status.value = props.defaultStatus ?? "todo";
 			assigneeId.value = "";
+			sprintId.value = props.defaultSprintId ?? "";
 		}
 	},
 );
@@ -55,6 +59,7 @@ async function submit() {
 				priority: priority.value,
 				status: status.value,
 				assigneeId: assigneeId.value || null,
+				sprintId: sprintId.value || null,
 			},
 		);
 		emit("created", issue);
@@ -130,6 +135,16 @@ async function submit() {
 						:options="[
 							{ value: '', label: 'Unassigned' },
 							...members.map((m) => ({ value: m.id, label: m.name })),
+						]"
+					/>
+				</label>
+				<label v-if="sprints?.length" class="space-y-1 col-span-2">
+					<span class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Sprint</span>
+					<Select
+						v-model="sprintId"
+						:options="[
+							{ value: '', label: '— no sprint —' },
+							...sprints.map((s) => ({ value: s.id, label: s.name })),
 						]"
 					/>
 				</label>

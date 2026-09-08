@@ -8,7 +8,7 @@ import Markdown from "@/components/ui/Markdown.vue";
 import MentionTextarea from "@/components/MentionTextarea.vue";
 import Select from "@/components/ui/Select.vue";
 import Textarea from "@/components/ui/Textarea.vue";
-import { api, type Issue, type IssuePriority, type IssueStatus, type IssueType, type Project, type SessionUser } from "@/lib/api";
+import { api, type Issue, type IssuePriority, type IssueStatus, type IssueType, type Project, type SessionUser, type Sprint } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
 
@@ -33,6 +33,7 @@ type Comment = {
 const issue = ref<Issue | null>(null);
 const project = ref<Project | null>(null);
 const comments = ref<Comment[]>([]);
+const sprints = ref<Sprint[]>([]);
 const loading = ref(false);
 const newComment = ref("");
 const editingDescription = ref(false);
@@ -82,6 +83,10 @@ watch(
 			issue.value = res.issue;
 			project.value = res.project;
 			comments.value = res.comments;
+			const { sprints: rows } = await api.get<{ sprints: Sprint[] }>(
+				`/projects/${res.project.key}/sprints`,
+			);
+			sprints.value = rows;
 		} catch (err) {
 			notifyError(err);
 			emit("close");
@@ -243,6 +248,17 @@ async function remove() {
 								type="date"
 								:model-value="issue.dueAt ? issue.dueAt.slice(0, 10) : ''"
 								@update:model-value="(v) => patch('dueAt', v ? new Date(v).toISOString() : null)"
+							/>
+						</label>
+						<label class="space-y-1 col-span-2">
+							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Sprint</span>
+							<Select
+								:model-value="issue.sprintId ?? ''"
+								:options="[
+									{ value: '', label: '— no sprint —' },
+									...sprints.map((s) => ({ value: s.id, label: s.name })),
+								]"
+								@update:model-value="(v) => patch('sprintId', (v || null) as any)"
 							/>
 						</label>
 					</div>

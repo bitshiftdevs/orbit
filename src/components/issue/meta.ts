@@ -68,6 +68,7 @@ export const STATUS_META: Record<
 };
 
 export const BOARD_STATUSES: IssueStatus[] = [
+	"backlog",
 	"todo",
 	"in_progress",
 	"in_review",

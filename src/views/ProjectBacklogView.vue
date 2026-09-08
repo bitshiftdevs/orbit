@@ -18,6 +18,7 @@ import {
 	type IssueStatus,
 	type Project,
 	type SessionUser,
+	type Sprint,
 } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 
@@ -34,6 +35,7 @@ const members = inject<
 >("members")!;
 
 const issues = ref<Issue[]>([]);
+const sprints = ref<Sprint[]>([]);
 const selectedIssueId = ref<string | null>(null);
 const newDialog = ref(false);
 const filterName = ref("");
@@ -72,14 +74,14 @@ const bulkOpen = ref(false);
 async function load() {
 	if (!project.value) return;
 	try {
-		const [{ issues: rows }, { filters }] = await Promise.all([
+		const [{ issues: rows }, { filters }, { sprints: sprintRows }] = await Promise.all([
 			api.get<{ issues: Issue[] }>(`/projects/${project.value.key}/issues`),
-			api.get<{ filters: SavedFilter[] }>(
-				`/projects/${project.value.key}/filters`,
-			),
+			api.get<{ filters: SavedFilter[] }>(`/projects/${project.value.key}/filters`),
+			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`),
 		]);
 		issues.value = rows;
 		savedFilters.value = filters;
+		sprints.value = sprintRows;
 	} catch (err) {
 		notifyError(err);
 	}
@@ -377,6 +379,7 @@ async function applyBulk() {
 			v-model:open="newDialog"
 			:project-key="project.key"
 			:members="members"
+			:sprints="sprints"
 			@created="(i) => issues.push(i)"
 		/>
 		<IssueDrawer
@@ -442,6 +445,17 @@ async function applyBulk() {
 							{ value: '', label: '— unchanged —' },
 							{ value: '__unassign__', label: 'Unassign' },
 							...members.map((m) => ({ value: m.id, label: m.name })),
+						]"
+					/>
+				</div>
+				<div v-if="sprints.length" class="space-y-1">
+					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Sprint</label>
+					<Select
+						v-model="bulkPatch.sprintId"
+						:options="[
+							{ value: '', label: '— unchanged —' },
+							{ value: '__none__', label: 'Remove from sprint' },
+							...sprints.map((s) => ({ value: s.id, label: s.name })),
 						]"
 					/>
 				</div>

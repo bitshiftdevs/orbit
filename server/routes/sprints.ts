@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -60,6 +60,18 @@ app.patch("/sprints/:id", async (c) => {
 	if (!existing) throw new HTTPException(404, { message: "sprint not found" });
 	await assertMember(c.get("user"), existing.projectId);
 	const body = schema.partial().parse(await c.req.json());
+	if (body.status === "active") {
+		await db
+			.update(sprints)
+			.set({ status: "planned" })
+			.where(
+				and(
+					eq(sprints.projectId, existing.projectId),
+					eq(sprints.status, "active"),
+					ne(sprints.id, existing.id),
+				),
+			);
+	}
 	const [row] = await db
 		.update(sprints)
 		.set({
