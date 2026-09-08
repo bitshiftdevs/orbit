@@ -2,38 +2,33 @@
 import { computed, inject, onMounted, ref, type Ref } from "vue";
 import { Bookmark, ListChecks, Plus, X } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
-import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
-import Select from "@/components/ui/Select.vue";
+import BulkEditDialog from "@/components/issue/BulkEditDialog.vue";
 import IssueDrawer from "@/components/issue/IssueDrawer.vue";
 import NewIssueDialog from "@/components/issue/NewIssueDialog.vue";
 import { PRIORITY_META, STATUS_META, TYPE_META } from "@/components/issue/meta";
 import { useShortcuts } from "@/composables/useShortcuts";
-import {
-	api,
-	type Issue,
-	type IssuePriority,
-	type IssueStatus,
-	type Project,
-	type SessionUser,
-	type Sprint,
-} from "@/lib/api";
+import { api } from "@/lib/api";
+import type {
+	BulkIssuePatch,
+	Issue,
+	IssueFilterState,
+	IssuePriority,
+	IssueStatus,
+	Project,
+	SavedFilter,
+	SessionUser,
+	Sprint,
+} from "@/types/domain";
 import { useConfirmDialog } from "@/composables/useConfirmDialog";
 import { notify, notifyError } from "@/lib/notify";
 
 const { confirm } = useConfirmDialog();
 const project = inject<Ref<Project | null>>("project")!;
 const members = inject<
-	Ref<
-		Array<
-			Pick<
-				SessionUser,
-				"id" | "name" | "handle" | "email" | "avatarUrl" | "accentColor" | "role"
-			>
-		>
-	>
+	Ref<Array<Pick<SessionUser, "id" | "name" | "handle" | "email" | "avatarUrl" | "accentColor" | "role">>>
 >("members")!;
 
 const issues = ref<Issue[]>([]);
@@ -43,34 +38,17 @@ const newDialog = ref(false);
 const filterName = ref("");
 const saveFilterOpen = ref(false);
 
-const filter = ref<{
-	status: IssueStatus[];
-	priority: IssuePriority[];
-	assigneeId: string[];
-	text: string;
-}>({
+const filter = ref<IssueFilterState>({
 	status: [],
 	priority: [],
 	assigneeId: [],
 	text: "",
 });
 
-type SavedFilter = {
-	id: string;
-	name: string;
-	query: typeof filter.value;
-	createdAt: string;
-};
 const savedFilters = ref<SavedFilter[]>([]);
 const activeFilterId = ref<string | null>(null);
 
 const selected = ref<Set<string>>(new Set());
-const bulkPatch = ref<{
-	status: IssueStatus | "";
-	priority: IssuePriority | "";
-	assigneeId: string;
-	sprintId: string;
-}>({ status: "", priority: "", assigneeId: "", sprintId: "" });
 const bulkOpen = ref(false);
 
 async function load() {
@@ -177,31 +155,24 @@ function toggleAll() {
 	}
 }
 
-async function applyBulk() {
+async function applyBulk(patch: BulkIssuePatch) {
 	if (!project.value || !selected.value.size) return;
-	const patch: Record<string, unknown> = {};
-	if (bulkPatch.value.status) patch.status = bulkPatch.value.status;
-	if (bulkPatch.value.priority) patch.priority = bulkPatch.value.priority;
-	if (bulkPatch.value.assigneeId)
-		patch.assigneeId =
-			bulkPatch.value.assigneeId === "__unassign__"
-				? null
-				: bulkPatch.value.assigneeId;
-	if (bulkPatch.value.sprintId)
-		patch.sprintId =
-			bulkPatch.value.sprintId === "__none__"
-				? null
-				: bulkPatch.value.sprintId;
-	if (!Object.keys(patch).length) return;
+	const body: Record<string, unknown> = {};
+	if (patch.status) body.status = patch.status;
+	if (patch.priority) body.priority = patch.priority;
+	if (patch.assigneeId)
+		body.assigneeId = patch.assigneeId === "__unassign__" ? null : patch.assigneeId;
+	if (patch.sprintId)
+		body.sprintId = patch.sprintId === "__none__" ? null : patch.sprintId;
+	if (!Object.keys(body).length) return;
 	try {
 		await api.post<{ updated: number }>(
 			`/projects/${project.value.key}/issues/bulk`,
-			{ ids: [...selected.value], patch },
+			{ ids: [...selected.value], patch: body },
 		);
 		notify(`Updated ${selected.value.size} issues`, "success");
 		selected.value = new Set();
 		bulkOpen.value = false;
-		bulkPatch.value = { status: "", priority: "", assigneeId: "", sprintId: "" };
 		await load();
 	} catch (err) {
 		notifyError(err);
@@ -285,13 +256,9 @@ async function applyBulk() {
 			class="flex items-center gap-3 px-8 py-2 border-b border-[var(--color-border)] bg-[var(--color-accent-soft)]"
 		>
 			<ListChecks class="h-4 w-4 text-[var(--color-accent)]" />
-			<span class="text-sm text-[var(--color-fg)]">
-				{{ selected.size }} selected
-			</span>
+			<span class="text-sm text-[var(--color-fg)]">{{ selected.size }} selected</span>
 			<div class="flex-1" />
-			<Button size="sm" variant="primary" @click="bulkOpen = true">
-				Bulk edit
-			</Button>
+			<Button size="sm" variant="primary" @click="bulkOpen = true">Bulk edit</Button>
 			<button
 				class="text-[11px] text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]"
 				@click="selected = new Set()"
@@ -405,67 +372,12 @@ async function applyBulk() {
 			</template>
 		</Dialog>
 
-		<Dialog v-model:open="bulkOpen" title="Bulk edit" width="440px">
-			<div class="p-5 space-y-4">
-				<p class="text-xs text-[var(--color-fg-subtle)]">
-					Applying to {{ selected.size }} issues. Blank fields are left as-is.
-				</p>
-				<div class="space-y-1">
-					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Status</label>
-					<Select
-						v-model="bulkPatch.status"
-						:options="[
-							{ value: '', label: '— unchanged —' },
-							{ value: 'backlog', label: 'Backlog' },
-							{ value: 'todo', label: 'Todo' },
-							{ value: 'in_progress', label: 'In progress' },
-							{ value: 'in_review', label: 'In review' },
-							{ value: 'done', label: 'Done' },
-							{ value: 'cancelled', label: 'Cancelled' },
-						]"
-					/>
-				</div>
-				<div class="space-y-1">
-					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Priority</label>
-					<Select
-						v-model="bulkPatch.priority"
-						:options="[
-							{ value: '', label: '— unchanged —' },
-							{ value: 'trivial', label: 'Trivial' },
-							{ value: 'low', label: 'Low' },
-							{ value: 'medium', label: 'Medium' },
-							{ value: 'high', label: 'High' },
-							{ value: 'urgent', label: 'Urgent' },
-						]"
-					/>
-				</div>
-				<div class="space-y-1">
-					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Assignee</label>
-					<Select
-						v-model="bulkPatch.assigneeId"
-						:options="[
-							{ value: '', label: '— unchanged —' },
-							{ value: '__unassign__', label: 'Unassign' },
-							...members.map((m) => ({ value: m.id, label: m.name })),
-						]"
-					/>
-				</div>
-				<div v-if="sprints.length" class="space-y-1">
-					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Sprint</label>
-					<Select
-						v-model="bulkPatch.sprintId"
-						:options="[
-							{ value: '', label: '— unchanged —' },
-							{ value: '__none__', label: 'Remove from sprint' },
-							...sprints.map((s) => ({ value: s.id, label: s.name })),
-						]"
-					/>
-				</div>
-			</div>
-			<template #footer>
-				<Button variant="ghost" @click="bulkOpen = false">Cancel</Button>
-				<Button variant="primary" @click="applyBulk">Apply</Button>
-			</template>
-		</Dialog>
+		<BulkEditDialog
+			v-model:open="bulkOpen"
+			:selected-count="selected.size"
+			:members="members"
+			:sprints="sprints"
+			@apply="applyBulk"
+		/>
 	</div>
 </template>

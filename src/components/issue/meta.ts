@@ -17,7 +17,7 @@ import {
 	XCircle,
 	type LucideIcon,
 } from "lucide-vue-next";
-import type { IssuePriority, IssueStatus, IssueType } from "@/lib/api";
+import type { IssuePriority, IssueStatus, IssueType } from "@/types/domain";
 
 export const STATUS_META: Record<
 	IssueStatus,

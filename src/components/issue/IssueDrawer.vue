@@ -9,7 +9,8 @@ import Markdown from "@/components/ui/Markdown.vue";
 import MentionTextarea from "@/components/MentionTextarea.vue";
 import Select from "@/components/ui/Select.vue";
 import Textarea from "@/components/ui/Textarea.vue";
-import { api, type Issue, type IssuePriority, type IssueStatus, type IssueType, type Project, type SessionUser, type Sprint } from "@/lib/api";
+import { api } from "@/lib/api";
+import type { Issue, IssueComment, IssuePriority, IssueStatus, IssueType, Project, SessionUser, Sprint } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
 
@@ -24,16 +25,9 @@ const emit = defineEmits<{
 	deleted: [id: string];
 }>();
 
-type Comment = {
-	id: string;
-	body: string;
-	createdAt: string;
-	author: { id: string; name: string; handle: string; avatarUrl: string | null; accentColor: string };
-};
-
 const issue = ref<Issue | null>(null);
 const project = ref<Project | null>(null);
-const comments = ref<Comment[]>([]);
+const comments = ref<IssueComment[]>([]);
 const sprints = ref<Sprint[]>([]);
 const loading = ref(false);
 const newComment = ref("");
@@ -81,7 +75,7 @@ watch(
 			const res = await api.get<{
 				issue: Issue;
 				project: Project;
-				comments: Comment[];
+				comments: IssueComment[];
 			}>(`/issues/${id}`);
 			issue.value = res.issue;
 			project.value = res.project;
@@ -117,7 +111,7 @@ async function patch<K extends keyof Issue>(key: K, value: Issue[K]) {
 async function submitComment() {
 	if (!issue.value || !newComment.value.trim()) return;
 	try {
-		const { comment } = await api.post<{ comment: Comment }>(
+		const { comment } = await api.post<{ comment: IssueComment }>(
 			`/issues/${issue.value.id}/comments`,
 			{ body: newComment.value.trim() },
 		);

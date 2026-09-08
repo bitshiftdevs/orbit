@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, type Ref } from "vue";
-import { Copy, ExternalLink, Plus, Radio, Trash2, Webhook } from "lucide-vue-next";
+import { inject, onMounted, ref, type Ref } from "vue";
+import { Copy, ExternalLink, Plus, Radio, Trash2, Webhook as WebhookIcon } from "lucide-vue-next";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
-import Select from "@/components/ui/Select.vue";
-import { api, type Project } from "@/lib/api";
+import { api } from "@/lib/api";
+import type { Project, Webhook, WebhookDelivery } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
 import { useConfirmDialog } from "@/composables/useConfirmDialog";
@@ -14,34 +14,18 @@ import { useConfirmDialog } from "@/composables/useConfirmDialog";
 const { confirm } = useConfirmDialog();
 const project = inject<Ref<Project | null>>("project")!;
 
-type Webhook = {
-	id: string;
-	name: string;
-	url: string;
-	events: string[];
-	preset: string | null;
-	active: boolean;
-	createdAt: string;
-};
-
-type Delivery = {
-	id: string;
-	event: string;
-	statusCode: number | null;
-	error: string | null;
-	durationMs: number | null;
-	createdAt: string;
-};
-
 const hooks = ref<Webhook[]>([]);
-const deliveries = ref<Record<string, Delivery[]>>({});
+const deliveries = ref<Record<string, WebhookDelivery[]>>({});
 const expandedId = ref<string | null>(null);
 const dialogOpen = ref(false);
 const secretShown = ref<string | null>(null);
+
+type WebhookPreset = "generic" | "slack" | "discord";
+
 const form = ref<{
 	name: string;
 	url: string;
-	preset: "generic" | "slack" | "discord";
+	preset: WebhookPreset;
 	events: string[];
 }>({
 	name: "",
@@ -82,15 +66,9 @@ async function create() {
 			signingSecret: string;
 		}>(`/projects/${project.value.key}/webhooks`, form.value);
 		hooks.value.unshift(webhook);
-		secretShown.value =
-			form.value.preset === "generic" ? signingSecret : null;
+		secretShown.value = form.value.preset === "generic" ? signingSecret : null;
 		dialogOpen.value = false;
-		form.value = {
-			name: "",
-			url: "",
-			preset: "generic",
-			events: ["issue.created", "issue.status_changed"],
-		};
+		form.value = { name: "", url: "", preset: "generic", events: ["issue.created", "issue.status_changed"] };
 		notify("Webhook created", "success");
 	} catch (err) {
 		notifyError(err);
@@ -124,7 +102,7 @@ async function toggleDeliveries(h: Webhook) {
 	expandedId.value = h.id;
 	if (!deliveries.value[h.id]) {
 		try {
-			const { deliveries: rows } = await api.get<{ deliveries: Delivery[] }>(
+			const { deliveries: rows } = await api.get<{ deliveries: WebhookDelivery[] }>(
 				`/webhooks/${h.id}/deliveries`,
 			);
 			deliveries.value[h.id] = rows;
@@ -145,7 +123,7 @@ function toggleEvent(e: string) {
 	else form.value.events.push(e);
 }
 
-function pickPreset(p: "generic" | "slack" | "discord") {
+function pickPreset(p: WebhookPreset) {
 	form.value.preset = p;
 	if (p === "slack") form.value.name = form.value.name || "Slack";
 	if (p === "discord") form.value.name = form.value.name || "Discord";
@@ -171,7 +149,7 @@ function pickPreset(p: "generic" | "slack" | "discord") {
 						class="h-8 w-8 rounded-md grid place-items-center shrink-0"
 						:class="h.active ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]' : 'bg-[var(--color-panel-hover)] text-[var(--color-fg-subtle)]'"
 					>
-						<Webhook class="h-4 w-4" />
+						<WebhookIcon class="h-4 w-4" />
 					</div>
 					<div class="min-w-0 flex-1">
 						<div class="flex items-center gap-2">
@@ -224,21 +202,13 @@ function pickPreset(p: "generic" | "slack" | "discord") {
 						>
 							<span
 								class="mono w-14 shrink-0"
-								:class="
-									d.statusCode && d.statusCode < 300
-										? 'text-emerald-400'
-										: 'text-red-400'
-								"
+								:class="d.statusCode && d.statusCode < 300 ? 'text-emerald-400' : 'text-red-400'"
 							>
 								{{ d.statusCode ?? "err" }}
 							</span>
 							<span class="mono text-[var(--color-fg-muted)] w-40 truncate">{{ d.event }}</span>
-							<span class="mono text-[var(--color-fg-subtle)]">
-								{{ d.durationMs ?? "-" }}ms
-							</span>
-							<span class="text-[var(--color-fg-subtle)] flex-1 truncate">
-								{{ d.error ?? "" }}
-							</span>
+							<span class="mono text-[var(--color-fg-subtle)]">{{ d.durationMs ?? "-" }}ms</span>
+							<span class="text-[var(--color-fg-subtle)] flex-1 truncate">{{ d.error ?? "" }}</span>
 							<span class="text-[var(--color-fg-subtle)]">{{ timeAgo(d.createdAt) }}</span>
 						</div>
 						<div

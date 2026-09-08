@@ -7,7 +7,8 @@ import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
 import Textarea from "@/components/ui/Textarea.vue";
-import { api, type Project, type Sprint } from "@/lib/api";
+import { api } from "@/lib/api";
+import type { Project, Sprint, SprintBurndown } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
 
@@ -69,13 +70,8 @@ async function setStatus(s: Sprint, status: Sprint["status"]) {
 	}
 }
 
-type Burndown = {
-	total: number;
-	completed: number;
-	days: Array<{ date: string; remaining: number; ideal: number }>;
-};
 const openSprintId = ref<string | null>(null);
-const burndown = ref<Burndown | null>(null);
+const burndown = ref<SprintBurndown | null>(null);
 const burndownLoading = ref(false);
 
 async function toggleBurndown(s: Sprint) {
@@ -87,7 +83,7 @@ async function toggleBurndown(s: Sprint) {
 	burndown.value = null;
 	burndownLoading.value = true;
 	try {
-		burndown.value = await api.get<Burndown>(`/sprints/${s.id}/burndown`);
+		burndown.value = await api.get<SprintBurndown>(`/sprints/${s.id}/burndown`);
 	} catch (err) {
 		notifyError(err);
 	} finally {

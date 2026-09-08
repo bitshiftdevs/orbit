@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
-import { Download, Edit3, Eye, File as FileIcon, Trash2, Upload, X } from "lucide-vue-next";
+import { Download, Eye, File as FileIcon, Trash2, Upload } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
-import Markdown from "@/components/ui/Markdown.vue";
-import { api, type FileRow, type Project } from "@/lib/api";
+import FilePreview from "@/components/files/FilePreview.vue";
+import { api } from "@/lib/api";
+import type { FileRow, Project } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
 import { formatBytes, timeAgo } from "@/lib/utils";
 import { useConfirmDialog } from "@/composables/useConfirmDialog";
 
 const { confirm } = useConfirmDialog();
 const project = inject<Ref<Project | null>>("project")!;
+
 const files = ref<FileRow[]>([]);
 const uploading = ref(false);
 const dragOver = ref(false);
 const inputRef = ref<HTMLInputElement | null>(null);
-const MAX = 5 * 1024 * 1024;
+const previewing = ref<FileRow | null>(null);
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 async function load() {
 	if (!project.value) return;
@@ -35,7 +39,7 @@ async function upload(list: FileList | null) {
 	uploading.value = true;
 	try {
 		for (const file of Array.from(list)) {
-			if (file.size > MAX) {
+			if (file.size > MAX_FILE_SIZE) {
 				notify(`${file.name} > 5 MB — skipping`, "error");
 				continue;
 			}
@@ -69,11 +73,6 @@ function download(f: FileRow) {
 	window.open(`/api/files/${f.id}/download`, "_blank");
 }
 
-const previewing = ref<FileRow | null>(null);
-const previewBlobUrl = ref<string | null>(null);
-const previewText = ref<string | null>(null);
-const previewLoading = ref(false);
-
 function previewable(f: FileRow) {
 	return (
 		f.mimeType.startsWith("image/") ||
@@ -86,80 +85,9 @@ function previewable(f: FileRow) {
 	);
 }
 
-async function openPreview(f: FileRow) {
-	previewing.value = f;
-	previewBlobUrl.value = null;
-	previewText.value = null;
-	previewLoading.value = true;
-	try {
-		const res = await fetch(`/api/files/${f.id}/preview`, { credentials: "include" });
-		const isText =
-			f.mimeType.startsWith("text/") ||
-			f.mimeType === "application/json" ||
-			f.mimeType === "application/xml";
-		if (isText) {
-			previewText.value = await res.text();
-		} else {
-			const blob = await res.blob();
-			previewBlobUrl.value = URL.createObjectURL(blob);
-		}
-	} catch {
-		previewText.value = null;
-	} finally {
-		previewLoading.value = false;
-	}
-}
-
-function closePreview() {
-	if (previewBlobUrl.value) URL.revokeObjectURL(previewBlobUrl.value);
-	previewing.value = null;
-	previewBlobUrl.value = null;
-	previewText.value = null;
-	editMode.value = false;
-	editContent.value = "";
-}
-
-function onPreviewKey(e: KeyboardEvent) {
-	if (e.key === "Escape") closePreview();
-}
-
-const editMode = ref(false);
-const editContent = ref("");
-const saving = ref(false);
-
-function isMarkdown(f: FileRow) {
-	return (
-		f.mimeType === "text/markdown" ||
-		f.mimeType === "text/x-markdown" ||
-		f.mimeType === "text/plain" ||
-		f.name.endsWith(".md") ||
-		f.name.endsWith(".markdown")
-	);
-}
-
-function enterEdit() {
-	editContent.value = previewText.value ?? "";
-	editMode.value = true;
-}
-
-async function saveEdit() {
-	if (!previewing.value) return;
-	saving.value = true;
-	try {
-		const { file: updated } = await api.patch<{ file: FileRow }>(
-			`/files/${previewing.value.id}/content`,
-			{ content: editContent.value },
-		);
-		previewText.value = editContent.value;
-		const idx = files.value.findIndex((f) => f.id === updated.id);
-		if (idx >= 0) files.value[idx] = { ...files.value[idx], ...updated };
-		editMode.value = false;
-		notify("Saved", "success");
-	} catch (err) {
-		notifyError(err);
-	} finally {
-		saving.value = false;
-	}
+function onFileSaved(updated: FileRow) {
+	const idx = files.value.findIndex((f) => f.id === updated.id);
+	if (idx >= 0) files.value[idx] = { ...files.value[idx], ...updated };
 }
 </script>
 
@@ -188,9 +116,7 @@ async function saveEdit() {
 				:class="{ 'border-[var(--color-accent)] bg-[var(--color-accent-soft)]': dragOver }"
 				@dragover.prevent="dragOver = true"
 				@dragleave="dragOver = false"
-				@drop.prevent="
-					(dragOver = false), upload(($event as DragEvent).dataTransfer?.files ?? null)
-				"
+				@drop.prevent="(dragOver = false), upload(($event as DragEvent).dataTransfer?.files ?? null)"
 				@click="inputRef?.click()"
 			>
 				drop files here or click to browse
@@ -202,9 +128,7 @@ async function saveEdit() {
 					:key="f.id"
 					class="card card-hover overflow-hidden flex flex-col"
 				>
-					<div
-						class="h-36 bg-[var(--color-bg-elevated)] grid place-items-center border-b border-[var(--color-border)] overflow-hidden"
-					>
+					<div class="h-36 bg-[var(--color-bg-elevated)] grid place-items-center border-b border-[var(--color-border)] overflow-hidden">
 						<img
 							v-if="f.mimeType.startsWith('image/')"
 							:src="`/api/files/${f.id}/preview`"
@@ -230,7 +154,7 @@ async function saveEdit() {
 							v-if="previewable(f)"
 							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
 							title="Preview"
-							@click="openPreview(f)"
+							@click="previewing = f"
 						>
 							<Eye class="h-4 w-4" />
 						</button>
@@ -253,115 +177,9 @@ async function saveEdit() {
 		</div>
 	</div>
 
-	<Teleport to="body">
-		<Transition
-			enter-active-class="transition-opacity duration-150"
-			enter-from-class="opacity-0"
-			leave-active-class="transition-opacity duration-100"
-			leave-to-class="opacity-0"
-		>
-			<div
-				v-if="previewing"
-				class="fixed inset-0 z-50 bg-black/90 flex flex-col"
-				@keydown="onPreviewKey"
-				tabindex="-1"
-			>
-				<header class="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
-					<div class="min-w-0 flex-1">
-						<p class="text-sm font-medium text-white truncate">{{ previewing.name }}</p>
-						<p class="text-[11px] text-white/50">
-							{{ formatBytes(previewing.sizeBytes) }} · {{ previewing.mimeType }}
-						</p>
-					</div>
-					<div class="flex items-center gap-2 ml-4">
-						<template v-if="isMarkdown(previewing) && previewText !== null">
-							<div class="flex items-center rounded border border-white/15 overflow-hidden text-xs">
-								<button
-									class="px-3 py-1.5 flex items-center gap-1.5 transition-colors"
-									:class="!editMode ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'"
-									@click="editMode = false"
-								>
-									<Eye class="h-3.5 w-3.5" />
-									Preview
-								</button>
-								<button
-									class="px-3 py-1.5 flex items-center gap-1.5 transition-colors"
-									:class="editMode ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'"
-									@click="enterEdit"
-								>
-									<Edit3 class="h-3.5 w-3.5" />
-									Edit
-								</button>
-							</div>
-							<Button v-if="editMode" size="sm" variant="primary" :loading="saving" @click="saveEdit">
-								Save
-							</Button>
-						</template>
-						<Button size="sm" variant="outline" @click="download(previewing)">
-							<Download class="h-3.5 w-3.5" />
-							Download
-						</Button>
-						<button
-							class="p-1.5 rounded text-white/60 hover:text-white hover:bg-white/10"
-							@click="closePreview"
-						>
-							<X class="h-5 w-5" />
-						</button>
-					</div>
-				</header>
-
-				<div class="flex-1 overflow-auto flex items-center justify-center p-6" @click.self="closePreview">
-					<div v-if="previewLoading" class="text-white/50 text-sm">Loading…</div>
-
-					<template v-else-if="previewBlobUrl">
-						<img
-							v-if="previewing.mimeType.startsWith('image/')"
-							:src="previewBlobUrl"
-							:alt="previewing.name"
-							class="max-h-full max-w-full object-contain rounded"
-						/>
-						<embed
-							v-else-if="previewing.mimeType === 'application/pdf'"
-							:src="previewBlobUrl"
-							type="application/pdf"
-							class="w-full rounded"
-							style="height: 80vh"
-						/>
-						<video
-							v-else-if="previewing.mimeType.startsWith('video/')"
-							:src="previewBlobUrl"
-							controls
-							class="max-h-full max-w-full rounded"
-						/>
-						<audio
-							v-else-if="previewing.mimeType.startsWith('audio/')"
-							:src="previewBlobUrl"
-							controls
-							class="w-80"
-						/>
-					</template>
-
-					<template v-else-if="previewText !== null">
-						<div
-							v-if="isMarkdown(previewing) && !editMode"
-							class="bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] p-8 max-h-full overflow-auto max-w-3xl w-full"
-						>
-							<Markdown :source="previewText" />
-						</div>
-						<textarea
-							v-else-if="isMarkdown(previewing) && editMode"
-							v-model="editContent"
-							class="w-full max-w-3xl bg-[var(--color-bg)] text-[var(--color-fg)] rounded-lg border border-[var(--color-border)] p-6 font-mono text-sm resize-none outline-none focus:border-[var(--color-accent)] transition-colors"
-							style="height: 80vh"
-							placeholder="Write markdown here…"
-						/>
-						<pre
-							v-else
-							class="text-sm text-white/90 bg-white/5 rounded p-5 max-h-full overflow-auto max-w-4xl w-full font-mono whitespace-pre-wrap break-all"
-						>{{ previewText }}</pre>
-					</template>
-				</div>
-			</div>
-		</Transition>
-	</Teleport>
+	<FilePreview
+		:file="previewing"
+		@close="previewing = null"
+		@saved="onFileSaved"
+	/>
 </template>
