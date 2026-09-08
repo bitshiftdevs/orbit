@@ -37,7 +37,7 @@ limit. Owned by us, self-hosted on Netlify, backed by Postgres.
 
 ```sh
 bun install
-cp .env.example .env      # fill DATABASE_URL, SECRETS_MASTER_KEY, SESSION_SECRET
+cp .env.schema .env      # fill DATABASE_URL, SECRETS_MASTER_KEY, SESSION_SECRET
 bun run db:generate       # generate initial migration
 bun run db:migrate        # apply migrations
 bun run db:seed           # create the first owner (prompts interactively)
