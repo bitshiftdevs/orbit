@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import OrbitLogo from "@/components/OrbitLogo.vue";
 import {
 	LogOut,
@@ -34,12 +34,6 @@ const shortcutsOpen = ref(false);
 
 onMounted(() => {
 	if (!projects.items.length) projects.load();
-	notifications.refresh();
-	notifications.connect();
-});
-
-onUnmounted(() => {
-	notifications.disconnect();
 });
 
 useShortcuts({
