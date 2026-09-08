@@ -9,7 +9,9 @@ import Textarea from "@/components/ui/Textarea.vue";
 import { api, type EnvVar, type Project, type Secret } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
+import { useConfirmDialog } from "@/composables/useConfirmDialog";
 
+const { confirm, prompt } = useConfirmDialog();
 const project = inject<Ref<Project | null>>("project")!;
 
 const secrets = ref<Secret[]>([]);
@@ -49,9 +51,9 @@ async function reveal(secret: Secret) {
 		delete revealed.value[secret.id];
 		return;
 	}
-	const reason = prompt(
+	const reason = await prompt(
 		`Reveal '${secret.name}'? A note is optional but logged with the audit event.`,
-		"",
+		{ title: "Reveal secret", placeholder: "Optional audit note…", confirmText: "Reveal" },
 	);
 	if (reason === null) return;
 	try {
@@ -101,7 +103,7 @@ async function createSecret() {
 }
 
 async function deleteSecret(s: Secret) {
-	if (!confirm(`Delete secret '${s.name}'?`)) return;
+	if (!await confirm(`Delete secret '${s.name}'?`, { danger: true, confirmText: "Delete" })) return;
 	try {
 		await api.del(`/secrets/${s.id}`);
 		secrets.value = secrets.value.filter((x) => x.id !== s.id);
@@ -135,7 +137,7 @@ async function saveEnvVar() {
 }
 
 async function deleteEnv(v: EnvVar) {
-	if (!confirm(`Delete ${v.scope}:${v.name}?`)) return;
+	if (!await confirm(`Delete ${v.scope}:${v.name}?`, { danger: true, confirmText: "Delete" })) return;
 	try {
 		await api.del(`/env/${v.id}`);
 		envVars.value = envVars.value.filter((x) => x.id !== v.id);

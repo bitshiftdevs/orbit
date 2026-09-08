@@ -11,6 +11,7 @@ import {
 import { useRouter } from "vue-router";
 import Avatar from "@/components/ui/Avatar.vue";
 import CommandPalette from "@/components/CommandPalette.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import NotificationsBell from "@/components/NotificationsBell.vue";
 import { useShortcuts } from "@/composables/useShortcuts";
 import { useProjects } from "@/stores/projects";
@@ -168,5 +169,6 @@ async function logout() {
 		</main>
 
 		<CommandPalette v-model:open="paletteOpen" />
+		<ConfirmDialog />
 	</div>
 </template>

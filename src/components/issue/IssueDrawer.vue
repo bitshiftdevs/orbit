@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { useConfirmDialog } from "@/composables/useConfirmDialog";
 import { Edit3, Eye, Trash2, X } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import Button from "@/components/ui/Button.vue";
@@ -60,6 +61,8 @@ const TYPE_OPTIONS = [
 	{ value: "chore", label: "Chore" },
 	{ value: "epic", label: "Epic" },
 ];
+
+const { confirm } = useConfirmDialog();
 
 const assigneeOptions = computed(() => [
 	{ value: "", label: "Unassigned" },
@@ -127,7 +130,7 @@ async function submitComment() {
 
 async function remove() {
 	if (!issue.value) return;
-	if (!confirm(`Delete ${issue.value.key}?`)) return;
+	if (!await confirm(`Delete ${issue.value.key}?`, { danger: true, confirmText: "Delete" })) return;
 	try {
 		await api.del(`/issues/${issue.value.id}`);
 		emit("deleted", issue.value.id);

@@ -9,7 +9,9 @@ import Select from "@/components/ui/Select.vue";
 import { api, type Project } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
+import { useConfirmDialog } from "@/composables/useConfirmDialog";
 
+const { confirm } = useConfirmDialog();
 const project = inject<Ref<Project | null>>("project")!;
 
 type Webhook = {
@@ -109,7 +111,7 @@ async function toggleActive(h: Webhook) {
 }
 
 async function remove(h: Webhook) {
-	if (!confirm(`Delete '${h.name}'?`)) return;
+	if (!await confirm(`Delete '${h.name}'?`, { danger: true, confirmText: "Delete" })) return;
 	await api.del(`/webhooks/${h.id}`);
 	hooks.value = hooks.value.filter((x) => x.id !== h.id);
 }

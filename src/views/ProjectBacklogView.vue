@@ -20,8 +20,10 @@ import {
 	type SessionUser,
 	type Sprint,
 } from "@/lib/api";
+import { useConfirmDialog } from "@/composables/useConfirmDialog";
 import { notify, notifyError } from "@/lib/notify";
 
+const { confirm } = useConfirmDialog();
 const project = inject<Ref<Project | null>>("project")!;
 const members = inject<
 	Ref<
@@ -161,7 +163,7 @@ async function saveFilter() {
 }
 
 async function deleteFilter(f: SavedFilter) {
-	if (!confirm(`Delete filter "${f.name}"?`)) return;
+	if (!await confirm(`Delete filter "${f.name}"?`, { danger: true, confirmText: "Delete" })) return;
 	await api.del(`/filters/${f.id}`);
 	savedFilters.value = savedFilters.value.filter((x) => x.id !== f.id);
 	if (activeFilterId.value === f.id) activeFilterId.value = null;

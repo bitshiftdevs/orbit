@@ -5,7 +5,9 @@ import Button from "@/components/ui/Button.vue";
 import { api, type FileRow, type Project } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 import { formatBytes, timeAgo } from "@/lib/utils";
+import { useConfirmDialog } from "@/composables/useConfirmDialog";
 
+const { confirm } = useConfirmDialog();
 const project = inject<Ref<Project | null>>("project")!;
 const files = ref<FileRow[]>([]);
 const uploading = ref(false);
@@ -53,7 +55,7 @@ async function upload(list: FileList | null) {
 }
 
 async function remove(f: FileRow) {
-	if (!confirm(`Delete ${f.name}?`)) return;
+	if (!await confirm(`Delete ${f.name}?`, { danger: true, confirmText: "Delete" })) return;
 	try {
 		await api.del(`/files/${f.id}`);
 		files.value = files.value.filter((x) => x.id !== f.id);

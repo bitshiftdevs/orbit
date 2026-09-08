@@ -11,7 +11,9 @@ import { api, type SessionUser } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
 import { useSession } from "@/stores/session";
+import { useConfirmDialog } from "@/composables/useConfirmDialog";
 
+const { confirm, prompt } = useConfirmDialog();
 const session = useSession();
 
 const form = ref({ name: "", handle: "", avatarUrl: "", accentColor: "#3b82f6" });
@@ -82,7 +84,7 @@ async function createToken() {
 }
 
 async function revokeToken(t: Token) {
-	if (!confirm(`Revoke '${t.name}'? Any script using it will stop working immediately.`))
+	if (!await confirm(`Revoke '${t.name}'? Any script using it will stop working immediately.`, { danger: true, confirmText: "Revoke" }))
 		return;
 	await api.del(`/tokens/${t.id}`);
 	tokens.value = tokens.value.filter((x) => x.id !== t.id);
@@ -124,7 +126,13 @@ async function confirmMfa() {
 }
 
 async function disableMfa() {
-	const code = prompt("Enter your current 6-digit code to disable MFA:");
+	const code = await prompt("Enter your current 6-digit code to disable MFA:", {
+		title: "Disable MFA",
+		inputLabel: "Authenticator code",
+		placeholder: "000000",
+		confirmText: "Disable",
+		danger: true,
+	});
 	if (!code) return;
 	try {
 		await api.post("/auth/mfa/disable", { code });
