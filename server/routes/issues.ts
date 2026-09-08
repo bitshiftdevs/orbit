@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -38,11 +38,12 @@ const createSchema = z.object({
   priority: z
     .enum(["trivial", "low", "medium", "high", "urgent"])
     .default("medium"),
-  storyPoints: z.number().int().min(0).max(99).optional(),
+  storyPoints: z.number().int().min(0).max(9999).optional(),
   assigneeId: z.string().uuid().optional().nullable(),
   sprintId: z.string().uuid().optional().nullable(),
   parentId: z.string().uuid().optional().nullable(),
   labels: z.array(z.string().max(40)).max(20).default([]),
+  prUrl: z.string().url().max(2048).optional().nullable(),
   dueAt: z.string().datetime().optional().nullable(),
 });
 
@@ -60,21 +61,33 @@ app.get("/projects/:idOrKey/issues", async (c) => {
   const project = await loadProject(c.req.param("idOrKey"));
   await assertMember(c.get("user"), project.id);
   const db = getDb();
-  const rows = await db
-    .select({
-      issue: issues,
-      assignee: author,
-    })
-    .from(issues)
-    .leftJoin(users, eq(users.id, issues.assigneeId))
-    .where(eq(issues.projectId, project.id))
-    .orderBy(asc(issues.rank));
+
+  const limit = Math.min(Number(c.req.query("limit") ?? 500), 500);
+  const offset = Math.max(Number(c.req.query("offset") ?? 0), 0);
+
+  const [rows, [{ value: total }]] = await Promise.all([
+    db
+      .select({ issue: issues, assignee: author })
+      .from(issues)
+      .leftJoin(users, eq(users.id, issues.assigneeId))
+      .where(eq(issues.projectId, project.id))
+      .orderBy(asc(issues.rank))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ value: count() })
+      .from(issues)
+      .where(eq(issues.projectId, project.id)),
+  ]);
+
   return c.json({
     issues: rows.map((r) => ({
       ...r.issue,
       key: `${project.key}-${r.issue.number}`,
       assignee: r.assignee?.id ? r.assignee : null,
     })),
+    total,
+    hasMore: offset + rows.length < total,
   });
 });
 
@@ -121,6 +134,7 @@ app.post("/projects/:idOrKey/issues", async (c) => {
         parentId: body.parentId ?? null,
         sprintId: body.sprintId ?? null,
         labels: body.labels,
+        prUrl: body.prUrl ?? null,
         dueAt: body.dueAt ? new Date(body.dueAt) : null,
         rank,
       })

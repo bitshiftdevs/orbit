@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { FileText } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
 import Select from "@/components/ui/Select.vue";
 import Textarea from "@/components/ui/Textarea.vue";
-import { api, type Issue, type IssueStatus, type SessionUser, type Sprint } from "@/lib/api";
+import { api, type Issue, type IssueStatus, type IssueTemplate, type SessionUser, type Sprint } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 import { STATUS_META, TYPE_META, PRIORITY_META } from "@/components/issue/meta";
 import type { IssueType, IssuePriority } from "@/types/domain";
@@ -32,6 +33,8 @@ const status = ref<IssueStatus>("todo");
 const assigneeId = ref("");
 const sprintId = ref("");
 const saving = ref(false);
+const templates = ref<IssueTemplate[]>([]);
+const templateId = ref("");
 
 const TYPE_OPTIONS = (Object.keys(TYPE_META) as IssueType[]).map((k) => ({
 	value: k,
@@ -56,7 +59,7 @@ const STATUS_OPTIONS = (["backlog", "todo", "in_progress", "in_review"] as Issue
 
 watch(
 	() => props.open,
-	(v) => {
+	async (v) => {
 		if (v) {
 			title.value = "";
 			description.value = "";
@@ -65,9 +68,28 @@ watch(
 			status.value = props.defaultStatus ?? "todo";
 			assigneeId.value = "";
 			sprintId.value = props.defaultSprintId ?? "";
+			templateId.value = "";
+			try {
+				const { templates: rows } = await api.get<{ templates: IssueTemplate[] }>(
+					`/projects/${props.projectKey}/templates`,
+				);
+				templates.value = rows;
+			} catch {}
 		}
 	},
 );
+
+function applyTemplate(id: string) {
+	const tpl = templates.value.find((t) => t.id === id);
+	if (!tpl) return;
+	templateId.value = id;
+	if (tpl.body) description.value = tpl.body;
+	type.value = tpl.type;
+	priority.value = tpl.priority;
+	if (tpl.labels?.length && !title.value) {
+		// pre-fill title hint from template name
+	}
+}
 
 async function submit() {
 	if (!title.value.trim()) return;
@@ -104,6 +126,22 @@ async function submit() {
 		@update:open="emit('update:open', $event)"
 	>
 		<div class="p-5 space-y-4">
+			<div v-if="templates.length" class="flex items-center gap-2">
+				<FileText class="h-3.5 w-3.5 text-[var(--color-fg-subtle)] shrink-0" />
+				<span class="text-[11px] text-[var(--color-fg-subtle)]">Template:</span>
+				<div class="flex flex-wrap gap-1">
+					<button
+						v-for="t in templates"
+						:key="t.id"
+						type="button"
+						class="text-[11px] px-2 py-0.5 rounded-full border transition-colors"
+						:class="templateId === t.id
+							? 'border-[var(--color-accent)] text-[var(--color-accent)] bg-[var(--color-accent-soft)]'
+							: 'border-[var(--color-border)] text-[var(--color-fg-subtle)] hover:border-[var(--color-border-strong)]'"
+						@click="applyTemplate(t.id)"
+					>{{ t.name }}</button>
+				</div>
+			</div>
 			<div class="space-y-1">
 				<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Title</label>
 				<Input v-model="title" placeholder="What needs doing?" autofocus />

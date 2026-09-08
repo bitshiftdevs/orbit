@@ -32,6 +32,9 @@ const members = inject<
 >("members")!;
 
 const issues = ref<Issue[]>([]);
+const issueTotal = ref(0);
+const issueOffset = ref(0);
+const ISSUE_PAGE = 250;
 const sprints = ref<Sprint[]>([]);
 const selectedIssueId = ref<string | null>(null);
 const newDialog = ref(false);
@@ -56,19 +59,45 @@ const refreshing = ref(false);
 async function load(force = false) {
 	if (!project.value) return;
 	refreshing.value = true;
+	issueOffset.value = 0;
 	try {
-		const [{ issues: rows }, { filters }, { sprints: sprintRows }] = await Promise.all([
-			api.get<{ issues: Issue[] }>(`/projects/${project.value.key}/issues`, { force }),
+		const [{ issues: rows, total }, { filters }, { sprints: sprintRows }] = await Promise.all([
+			api.get<{ issues: Issue[]; total: number; hasMore: boolean }>(
+				`/projects/${project.value.key}/issues?limit=${ISSUE_PAGE}&offset=0`,
+				{ force },
+			),
 			api.get<{ filters: SavedFilter[] }>(`/projects/${project.value.key}/filters`, { force }),
 			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`, { force }),
 		]);
 		issues.value = rows;
+		issueTotal.value = total;
+		issueOffset.value = rows.length;
 		savedFilters.value = filters;
 		sprints.value = sprintRows;
 	} catch (err) {
 		notifyError(err);
 	} finally {
 		refreshing.value = false;
+	}
+}
+
+const loadingMore = ref(false);
+
+async function loadMore() {
+	if (!project.value || loadingMore.value) return;
+	loadingMore.value = true;
+	try {
+		const { issues: rows, total } = await api.get<{ issues: Issue[]; total: number; hasMore: boolean }>(
+			`/projects/${project.value.key}/issues?limit=${ISSUE_PAGE}&offset=${issueOffset.value}`,
+			{ force: true },
+		);
+		issues.value.push(...rows);
+		issueTotal.value = total;
+		issueOffset.value += rows.length;
+	} catch (err) {
+		notifyError(err);
+	} finally {
+		loadingMore.value = false;
 	}
 }
 
@@ -352,6 +381,15 @@ async function applyBulk(patch: BulkIssuePatch) {
 					class="py-12 text-center text-sm text-[var(--color-fg-subtle)]"
 				>
 					no matches. try clearing filters, or press <kbd class="mono px-1">c</kbd> to create.
+				</div>
+				<div v-if="issueOffset < issueTotal" class="px-4 py-3 border-t border-[var(--color-border)]">
+					<button
+						class="text-xs text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] disabled:opacity-40"
+						:disabled="loadingMore"
+						@click="loadMore"
+					>
+						{{ loadingMore ? "loading…" : `load more (${issueTotal - issueOffset} remaining)` }}
+					</button>
 				</div>
 			</div>
 		</div>

@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
-import { BarChart3, Play, Plus, Check, RefreshCw } from "lucide-vue-next";
+import { BarChart3, Play, Plus, Check, RefreshCw, TrendingUp } from "lucide-vue-next";
 import Badge from "@/components/ui/Badge.vue";
 import BurndownChart from "@/components/BurndownChart.vue";
+import VelocityChart from "@/components/VelocityChart.vue";
 import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
 import Textarea from "@/components/ui/Textarea.vue";
 import DatePicker from "@/components/ui/DatePicker.vue";
 import { api } from "@/lib/api";
-import type { Project, Sprint, SprintBurndown } from "@/types/domain";
+import type { CycleTimeEntry, Project, Sprint, SprintBurndown, SprintVelocity } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
 
@@ -19,16 +20,22 @@ const sprints = ref<Sprint[]>([]);
 const dialogOpen = ref(false);
 const form = ref({ name: "", goal: "", startsAt: "", endsAt: "" });
 const refreshing = ref(false);
+const velocity = ref<SprintVelocity[]>([]);
+const cycleTime = ref<CycleTimeEntry[]>([]);
+const analyticsOpen = ref(false);
 
 async function load(force = false) {
 	if (!project.value) return;
 	refreshing.value = true;
 	try {
-		const { sprints: rows } = await api.get<{ sprints: Sprint[] }>(
-			`/projects/${project.value.key}/sprints`,
-			{ force },
-		);
+		const [{ sprints: rows }, { velocity: v }, { cycleTime: ct }] = await Promise.all([
+			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`, { force }),
+			api.get<{ velocity: SprintVelocity[] }>(`/projects/${project.value.key}/velocity`, { force }),
+			api.get<{ cycleTime: CycleTimeEntry[] }>(`/projects/${project.value.key}/cycle-time`, { force }),
+		]);
 		sprints.value = rows;
+		velocity.value = v;
+		cycleTime.value = ct;
 	} catch (err) {
 		notifyError(err);
 	} finally {
@@ -113,10 +120,36 @@ async function toggleBurndown(s: Sprint) {
 				>
 					<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
 				</button>
+				<Button variant="ghost" size="sm" @click="analyticsOpen = !analyticsOpen">
+					<TrendingUp class="h-3.5 w-3.5" />
+					Analytics
+				</Button>
 				<Button variant="primary" size="sm" @click="dialogOpen = true">
 					<Plus class="h-3.5 w-3.5" />
 					New sprint
 				</Button>
+			</div>
+		</div>
+
+		<!-- Analytics panel -->
+		<div v-if="analyticsOpen" class="px-8 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] space-y-4">
+			<VelocityChart :sprints="velocity" />
+			<div v-if="cycleTime.length" class="card p-4">
+				<div class="text-xs text-[var(--color-fg-subtle)] uppercase tracking-widest mb-3">Cycle time (avg days to completion)</div>
+				<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+					<div
+						v-for="ct in cycleTime"
+						:key="ct.type"
+						class="text-center p-3 rounded-md bg-[var(--color-panel)]"
+					>
+						<div class="text-2xl font-semibold mono text-[var(--color-accent)]">{{ ct.avgDays }}</div>
+						<div class="text-[11px] text-[var(--color-fg-subtle)] mt-0.5 capitalize">{{ ct.type }}</div>
+						<div class="text-[10px] text-[var(--color-fg-subtle)]">{{ ct.count }} issues</div>
+					</div>
+				</div>
+			</div>
+			<div v-else-if="!refreshing" class="text-center text-sm text-[var(--color-fg-subtle)] py-4">
+				No completed issues to calculate cycle time yet.
 			</div>
 		</div>
 

@@ -1,4 +1,4 @@
-import { asc, desc, eq, and, ilike, or, sql } from "drizzle-orm";
+import { asc, avg, count, desc, eq, and, ilike, isNotNull, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
@@ -7,6 +7,8 @@ import { getDb } from "@server/db/client";
 import {
 	issues,
 	issueComments,
+	issueLinks,
+	issueTemplates,
 	projects,
 	projectMembers,
 	sprints,
@@ -145,6 +147,7 @@ function buildServer(user: User) {
 			sprintId: z.string().uuid().optional().describe("Sprint UUID"),
 			labels: z.array(z.string()).optional(),
 			storyPoints: z.number().int().min(0).max(99).optional(),
+			prUrl: z.string().url().optional().nullable().describe("PR or branch URL"),
 			dueAt: z.string().datetime().optional().describe("ISO 8601 due date"),
 		},
 		async ({ idOrKey, ...body }) => {
@@ -204,6 +207,7 @@ function buildServer(user: User) {
 			sprintId: z.string().uuid().nullable().optional(),
 			labels: z.array(z.string()).optional(),
 			storyPoints: z.number().int().min(0).max(99).optional(),
+			prUrl: z.string().url().nullable().optional().describe("PR or branch URL"),
 			dueAt: z.string().datetime().nullable().optional(),
 		},
 		async ({ id, ...body }) => {
@@ -403,6 +407,149 @@ function buildServer(user: User) {
 					},
 				],
 			};
+		},
+	);
+
+	// ─── Issue Links ───────────────────────────────────────────────────────────
+
+	server.tool(
+		"get_issue_links",
+		"Get dependency links for an issue (blocks / duplicates / relates_to)",
+		{ id: z.string().uuid().describe("Issue UUID") },
+		async ({ id }) => {
+			const rows = await db
+				.select({ link: issueLinks, linked: issues, project: { key: projects.key } })
+				.from(issueLinks)
+				.innerJoin(
+					issues,
+					or(
+						and(eq(issueLinks.sourceId, id), eq(issues.id, issueLinks.targetId)),
+						and(eq(issueLinks.targetId, id), eq(issues.id, issueLinks.sourceId)),
+					),
+				)
+				.innerJoin(projects, eq(projects.id, issues.projectId))
+				.where(or(eq(issueLinks.sourceId, id), eq(issueLinks.targetId, id)));
+			return { content: [{ type: "text" as const, text: JSON.stringify(rows, null, 2) }] };
+		},
+	);
+
+	server.tool(
+		"add_issue_link",
+		"Add a link between two issues",
+		{
+			sourceId: z.string().uuid().describe("Source issue UUID"),
+			targetId: z.string().uuid().describe("Target issue UUID"),
+			kind: z.enum(["blocks", "duplicates", "relates_to"]).default("relates_to"),
+		},
+		async ({ sourceId, targetId, kind }) => {
+			const [src] = await db.select({ projectId: issues.projectId }).from(issues).where(eq(issues.id, sourceId)).limit(1);
+			if (!src) throw new Error("source issue not found");
+			await assertMember(user, src.projectId);
+			const [row] = await db
+				.insert(issueLinks)
+				.values({ sourceId, targetId, kind, createdById: user.id })
+				.onConflictDoNothing()
+				.returning();
+			return { content: [{ type: "text" as const, text: JSON.stringify(row, null, 2) }] };
+		},
+	);
+
+	server.tool(
+		"remove_issue_link",
+		"Remove a link between issues",
+		{ linkId: z.string().uuid().describe("Link UUID") },
+		async ({ linkId }) => {
+			await db.delete(issueLinks).where(eq(issueLinks.id, linkId));
+			return { content: [{ type: "text" as const, text: "Link removed." }] };
+		},
+	);
+
+	// ─── Templates ─────────────────────────────────────────────────────────────
+
+	server.tool(
+		"list_templates",
+		"List issue templates for a project",
+		{ idOrKey: z.string().describe("Project UUID or short key") },
+		async ({ idOrKey }) => {
+			const project = await loadProject(idOrKey);
+			await assertMember(user, project.id);
+			const rows = await db
+				.select()
+				.from(issueTemplates)
+				.where(eq(issueTemplates.projectId, project.id))
+				.orderBy(issueTemplates.createdAt);
+			return { content: [{ type: "text" as const, text: JSON.stringify(rows, null, 2) }] };
+		},
+	);
+
+	server.tool(
+		"create_template",
+		"Create an issue template for a project",
+		{
+			idOrKey: z.string().describe("Project UUID or short key"),
+			name: z.string().describe("Template name"),
+			description: z.string().optional().nullable().describe("Short description of the template"),
+			type: z.enum(["task", "bug", "story", "epic", "chore"]).optional().default("task"),
+			priority: z.enum(["trivial", "low", "medium", "high", "urgent"]).optional().default("medium"),
+			labels: z.array(z.string()).optional().default([]),
+			body: z.string().optional().nullable().describe("Default issue body (markdown)"),
+		},
+		async ({ idOrKey, ...body }) => {
+			const project = await loadProject(idOrKey);
+			await assertMember(user, project.id);
+			const [row] = await db
+				.insert(issueTemplates)
+				.values({ projectId: project.id, ...body, createdById: user.id })
+				.returning();
+			return { content: [{ type: "text" as const, text: JSON.stringify(row, null, 2) }] };
+		},
+	);
+
+	// ─── Analytics ─────────────────────────────────────────────────────────────
+
+	server.tool(
+		"get_velocity",
+		"Get sprint velocity (committed vs completed story points) for a project",
+		{ idOrKey: z.string().describe("Project UUID or short key") },
+		async ({ idOrKey }) => {
+			const project = await loadProject(idOrKey);
+			await assertMember(user, project.id);
+			const rows = await db
+				.select({
+					sprintId: sprints.id,
+					sprintName: sprints.name,
+					status: sprints.status,
+					committed: sql<number>`coalesce(sum(${issues.storyPoints}), 0)`.mapWith(Number),
+					completed: sql<number>`coalesce(sum(${issues.storyPoints}) filter (where ${issues.status} = 'done'), 0)`.mapWith(Number),
+					issueCount: count(issues.id),
+				})
+				.from(sprints)
+				.leftJoin(issues, eq(issues.sprintId, sprints.id))
+				.where(eq(sprints.projectId, project.id))
+				.groupBy(sprints.id)
+				.orderBy(sprints.createdAt);
+			return { content: [{ type: "text" as const, text: JSON.stringify(rows, null, 2) }] };
+		},
+	);
+
+	server.tool(
+		"get_cycle_time",
+		"Get average cycle time (days from creation to completion) by issue type for a project",
+		{ idOrKey: z.string().describe("Project UUID or short key") },
+		async ({ idOrKey }) => {
+			const project = await loadProject(idOrKey);
+			await assertMember(user, project.id);
+			const rows = await db
+				.select({
+					type: issues.type,
+					avgDays: sql<number>`round(avg(extract(epoch from ${issues.completedAt} - ${issues.createdAt}) / 86400), 1)`.mapWith(Number),
+					count: count(issues.id),
+				})
+				.from(issues)
+				.where(and(eq(issues.projectId, project.id), isNotNull(issues.completedAt)))
+				.groupBy(issues.type)
+				.orderBy(issues.type);
+			return { content: [{ type: "text" as const, text: JSON.stringify(rows, null, 2) }] };
 		},
 	);
 

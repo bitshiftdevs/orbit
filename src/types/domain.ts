@@ -71,10 +71,49 @@ export type Issue = {
 	parentId: string | null;
 	sprintId: string | null;
 	labels: string[];
+	prUrl: string | null;
 	dueAt: string | null;
 	completedAt: string | null;
 	createdAt: string;
 	updatedAt: string;
+};
+
+export type IssueLinkKind = "blocks" | "duplicates" | "relates_to";
+
+export type IssueLink = {
+	id: string;
+	sourceId: string;
+	targetId: string;
+	kind: IssueLinkKind;
+	createdAt: string;
+	linked: Pick<Issue, "id" | "key" | "title" | "status" | "type" | "priority">;
+};
+
+export type IssueTemplate = {
+	id: string;
+	projectId: string;
+	name: string;
+	description: string | null;
+	type: IssueType;
+	priority: IssuePriority;
+	labels: string[];
+	body: string | null;
+	createdAt: string;
+};
+
+export type SprintVelocity = {
+	sprintId: string;
+	sprintName: string;
+	status: string;
+	committed: number;
+	completed: number;
+	issueCount: number;
+};
+
+export type CycleTimeEntry = {
+	type: IssueType;
+	avgDays: number;
+	count: number;
 };
 
 export type IssueComment = {

@@ -15,6 +15,9 @@ import webhooks from "./routes/webhooks";
 import filters from "./routes/filters";
 import mfa from "./routes/mfa";
 import search from "./routes/search";
+import analytics from "./routes/analytics";
+import links from "./routes/links";
+import templates from "./routes/templates";
 import mcp from "./routes/mcp";
 import type { AppEnv } from "./types";
 
@@ -57,6 +60,9 @@ export function createApp() {
 	app.route("/", webhooks);
 	app.route("/", filters);
 	app.route("/search", search);
+	app.route("/", analytics);
+	app.route("/", links);
+	app.route("/", templates);
 	app.route("/mcp", mcp);
 
 	app.onError((err, c) => {

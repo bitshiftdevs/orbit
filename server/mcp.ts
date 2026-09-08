@@ -114,6 +114,7 @@ server.tool(
 		sprintId: z.string().uuid().optional().describe("Sprint UUID"),
 		labels: z.array(z.string()).optional(),
 		storyPoints: z.number().int().min(0).max(99).optional(),
+		prUrl: z.string().url().optional().nullable().describe("PR or branch URL"),
 		dueAt: z.string().datetime().optional().describe("ISO 8601 due date"),
 	},
 	async ({ idOrKey, ...body }) => {
@@ -138,6 +139,7 @@ server.tool(
 		sprintId: z.string().uuid().nullable().optional(),
 		labels: z.array(z.string()).optional(),
 		storyPoints: z.number().int().min(0).max(99).optional(),
+		prUrl: z.string().url().nullable().optional().describe("PR or branch URL"),
 		dueAt: z.string().datetime().nullable().optional(),
 	},
 	async ({ id, ...body }) => {
@@ -230,6 +232,94 @@ server.tool(
 	{ q: z.string().describe("Search query — also matches issue keys like ORB-42") },
 	async ({ q }) => {
 		const data = await api("GET", `/search?q=${encodeURIComponent(q)}`);
+		return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+	},
+);
+
+// ─── Issue Links ─────────────────────────────────────────────────────────────
+
+server.tool(
+	"get_issue_links",
+	"Get dependency links for an issue (blocks / duplicates / relates_to)",
+	{ id: z.string().uuid().describe("Issue UUID") },
+	async ({ id }) => {
+		const data = await api("GET", `/issues/${id}/links`);
+		return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+	},
+);
+
+server.tool(
+	"add_issue_link",
+	"Add a link between two issues",
+	{
+		sourceId: z.string().uuid().describe("Source issue UUID"),
+		targetId: z.string().uuid().describe("Target issue UUID"),
+		kind: z.enum(["blocks", "duplicates", "relates_to"]).default("relates_to"),
+	},
+	async ({ sourceId, targetId, kind }) => {
+		const data = await api("POST", `/issues/${sourceId}/links`, { targetId, kind });
+		return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+	},
+);
+
+server.tool(
+	"remove_issue_link",
+	"Remove a link between issues",
+	{ linkId: z.string().uuid().describe("Link UUID") },
+	async ({ linkId }) => {
+		await api("DELETE", `/issues/links/${linkId}`);
+		return { content: [{ type: "text", text: "Link removed." }] };
+	},
+);
+
+// ─── Templates ────────────────────────────────────────────────────────────────
+
+server.tool(
+	"list_templates",
+	"List issue templates for a project",
+	{ idOrKey: z.string().describe("Project UUID or short key") },
+	async ({ idOrKey }) => {
+		const data = await api<{ templates: unknown[] }>("GET", `/projects/${idOrKey}/templates`);
+		return { content: [{ type: "text", text: JSON.stringify(data.templates, null, 2) }] };
+	},
+);
+
+server.tool(
+	"create_template",
+	"Create an issue template for a project",
+	{
+		idOrKey: z.string().describe("Project UUID or short key"),
+		name: z.string().describe("Template name"),
+		description: z.string().optional().nullable(),
+		type: z.enum(["task", "bug", "story", "epic", "chore"]).optional().default("task"),
+		priority: z.enum(["trivial", "low", "medium", "high", "urgent"]).optional().default("medium"),
+		labels: z.array(z.string()).optional().default([]),
+		body: z.string().optional().nullable().describe("Default issue body (markdown)"),
+	},
+	async ({ idOrKey, ...body }) => {
+		const data = await api("POST", `/projects/${idOrKey}/templates`, body);
+		return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+	},
+);
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+server.tool(
+	"get_velocity",
+	"Get sprint velocity (committed vs completed story points) for a project",
+	{ idOrKey: z.string().describe("Project UUID or short key") },
+	async ({ idOrKey }) => {
+		const data = await api("GET", `/projects/${idOrKey}/velocity`);
+		return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+	},
+);
+
+server.tool(
+	"get_cycle_time",
+	"Get average cycle time (days to completion) by issue type for a project",
+	{ idOrKey: z.string().describe("Project UUID or short key") },
+	async ({ idOrKey }) => {
+		const data = await api("GET", `/projects/${idOrKey}/cycle-time`);
 		return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
 	},
 );

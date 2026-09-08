@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
 import { useConfirmDialog } from "@/composables/useConfirmDialog";
-import { Edit3, Eye, Trash2, X } from "lucide-vue-next";
+import { Edit3, Eye, Link2, Plus, Trash2, X } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
+import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
 import Input from "@/components/ui/Input.vue";
 import Markdown from "@/components/ui/Markdown.vue";
@@ -13,7 +14,7 @@ import DatePicker from "@/components/ui/DatePicker.vue";
 import PrioritySelect from "@/components/issue/PrioritySelect.vue";
 import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
 import { api } from "@/lib/api";
-import type { Issue, IssueComment, IssueStatus, IssueType, Project, SessionUser, Sprint } from "@/types/domain";
+import type { Issue, IssueComment, IssueLink, IssueLinkKind, IssueStatus, IssueType, Project, SessionUser, Sprint } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
 import { STATUS_META, TYPE_META } from "@/components/issue/meta";
@@ -48,9 +49,15 @@ type Draft = {
 	storyPoints: number | null;
 	dueAt: string | null;
 	sprintId: string | null;
+	prUrl: string | null;
 };
 
 const draft = ref<Draft | null>(null);
+const links = ref<IssueLink[]>([]);
+const addLinkOpen = ref(false);
+const newLinkTargetKey = ref("");
+const newLinkKind = ref<IssueLinkKind>("relates_to");
+const addingLink = ref(false);
 
 function initDraft() {
 	if (!issue.value) { draft.value = null; return; }
@@ -65,6 +72,7 @@ function initDraft() {
 		storyPoints: i.storyPoints ?? null,
 		dueAt: i.dueAt ?? null,
 		sprintId: i.sprintId ?? null,
+		prUrl: i.prUrl ?? null,
 	};
 }
 
@@ -81,9 +89,11 @@ const isDirty = computed(() => {
 		(d.assigneeId ?? null) !== (i.assigneeId ?? null) ||
 		(d.storyPoints ?? null) !== (i.storyPoints ?? null) ||
 		(d.dueAt ?? null) !== (i.dueAt ?? null) ||
-		(d.sprintId ?? null) !== (i.sprintId ?? null)
+		(d.sprintId ?? null) !== (i.sprintId ?? null) ||
+		(d.prUrl ?? null) !== (i.prUrl ?? null)
 	);
 });
+
 
 const STATUS_OPTIONS = (Object.keys(STATUS_META) as IssueStatus[]).map((k) => ({
 	value: k,
@@ -120,10 +130,12 @@ watch(
 			project.value = res.project;
 			comments.value = res.comments;
 			initDraft();
-			const { sprints: rows } = await api.get<{ sprints: Sprint[] }>(
-				`/projects/${res.project.key}/sprints`,
-			);
+			const [{ sprints: rows }, { links: linkRows }] = await Promise.all([
+				api.get<{ sprints: Sprint[] }>(`/projects/${res.project.key}/sprints`),
+				api.get<{ links: IssueLink[] }>(`/issues/${id}/links`),
+			]);
 			sprints.value = rows;
+			links.value = linkRows;
 		} catch (err) {
 			notifyError(err);
 			emit("close");
@@ -150,6 +162,7 @@ async function save() {
 				storyPoints: draft.value.storyPoints,
 				dueAt: draft.value.dueAt,
 				sprintId: draft.value.sprintId,
+				prUrl: draft.value.prUrl,
 			},
 		);
 		issue.value = { ...updated, key: issue.value.key };
@@ -191,6 +204,48 @@ async function remove() {
 		emit("deleted", issue.value.id);
 		emit("close");
 		notify("Issue deleted", "success");
+	} catch (err) {
+		notifyError(err);
+	}
+}
+
+async function addLink() {
+	if (!issue.value || !newLinkTargetKey.value.trim()) return;
+	addingLink.value = true;
+	try {
+		// Resolve the issue key to an ID via search
+		const { issues: found } = await api.get<{ issues: Array<{ id: string; key: string }> }>(
+			`/search?q=${encodeURIComponent(newLinkTargetKey.value.trim())}`,
+		);
+		const target = found.find(
+			(x) => x.key.toLowerCase() === newLinkTargetKey.value.trim().toLowerCase(),
+		);
+		if (!target) {
+			notify(`Issue "${newLinkTargetKey.value}" not found`, "error");
+			return;
+		}
+		await api.post(`/issues/${issue.value.id}/links`, {
+			targetId: target.id,
+			kind: newLinkKind.value,
+		});
+		const { links: linkRows } = await api.get<{ links: IssueLink[] }>(
+			`/issues/${issue.value.id}/links`,
+			{ force: true },
+		);
+		links.value = linkRows;
+		newLinkTargetKey.value = "";
+		addLinkOpen.value = false;
+	} catch (err) {
+		notifyError(err);
+	} finally {
+		addingLink.value = false;
+	}
+}
+
+async function removeLink(linkId: string) {
+	try {
+		await api.del(`/issues/links/${linkId}`);
+		links.value = links.value.filter((l) => l.id !== linkId);
 	} catch (err) {
 		notifyError(err);
 	}
@@ -320,6 +375,65 @@ async function remove() {
 								@update:model-value="(v) => draft!.sprintId = (v || null)"
 							/>
 						</label>
+						<label v-if="project?.repoUrl" class="space-y-1 col-span-2">
+							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">PR / branch URL</span>
+							<Input
+								v-model="draft.prUrl"
+								placeholder="https://github.com/…/pull/42"
+							/>
+						</label>
+					</div>
+
+					<!-- Issue links -->
+					<div>
+						<div class="flex items-center justify-between mb-2">
+							<h3 class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Links</h3>
+							<button
+								class="flex items-center gap-1 text-[11px] text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]"
+								@click="addLinkOpen = !addLinkOpen"
+							>
+								<Plus class="h-3 w-3" />
+								Add
+							</button>
+						</div>
+						<div v-if="addLinkOpen" class="flex items-center gap-2 mb-2">
+							<Select
+								:model-value="newLinkKind"
+								:options="[
+									{ value: 'blocks', label: 'blocks' },
+									{ value: 'duplicates', label: 'duplicates' },
+									{ value: 'relates_to', label: 'relates to' },
+								]"
+								class="w-32"
+								@update:model-value="(v) => newLinkKind = v as IssueLinkKind"
+							/>
+							<Input
+								v-model="newLinkTargetKey"
+								placeholder="ORB-42"
+								class="flex-1"
+								@keydown.enter="addLink"
+							/>
+							<Button size="sm" variant="primary" :loading="addingLink" @click="addLink">Link</Button>
+						</div>
+						<ul v-if="links.length" class="space-y-1.5">
+							<li
+								v-for="l in links"
+								:key="l.id"
+								class="flex items-center gap-2 text-xs"
+							>
+								<span class="text-[var(--color-fg-subtle)] w-20 shrink-0 italic">{{ l.kind.replace(/_/g, " ") }}</span>
+								<component :is="TYPE_META[l.linked.type].icon" class="h-3.5 w-3.5 shrink-0" :class="TYPE_META[l.linked.type].text" />
+								<span class="mono text-[var(--color-fg-subtle)]">{{ l.linked.key }}</span>
+								<span class="flex-1 truncate text-[var(--color-fg)]">{{ l.linked.title }}</span>
+								<button
+									class="p-0.5 rounded text-[var(--color-fg-subtle)] hover:text-red-400"
+									@click="removeLink(l.id)"
+								>
+									<X class="h-3 w-3" />
+								</button>
+							</li>
+						</ul>
+						<div v-else-if="!addLinkOpen" class="text-[12px] text-[var(--color-fg-subtle)]">No links.</div>
 					</div>
 
 					<div>
@@ -386,6 +500,7 @@ async function remove() {
 						:members="members"
 						placeholder="Add a comment · @mention teammates · **markdown** supported"
 						:rows="2"
+						:previewable="true"
 					/>
 					<div class="flex justify-end mt-2">
 						<Button variant="primary" size="sm" @click="submitComment" :disabled="!newComment.trim()">

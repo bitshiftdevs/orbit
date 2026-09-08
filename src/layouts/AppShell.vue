@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import OrbitLogo from "@/components/OrbitLogo.vue";
 import {
 	LogOut,
+	Moon,
 	Search,
 	Settings,
+	Sun,
 	Users,
 	FolderKanban,
 	LayoutDashboard,
@@ -13,19 +15,31 @@ import { useRouter } from "vue-router";
 import Avatar from "@/components/ui/Avatar.vue";
 import CommandPalette from "@/components/CommandPalette.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import KeyboardShortcutsModal from "@/components/KeyboardShortcutsModal.vue";
 import NotificationsBell from "@/components/NotificationsBell.vue";
 import { useShortcuts } from "@/composables/useShortcuts";
 import { useProjects } from "@/stores/projects";
 import { useSession } from "@/stores/session";
+import { useNotifications } from "@/stores/notifications";
+import { useTheme } from "@/composables/useTheme";
 
 const session = useSession();
 const projects = useProjects();
+const notifications = useNotifications();
+const { isLight, toggle: toggleTheme } = useTheme();
 const router = useRouter();
 
 const paletteOpen = ref(false);
+const shortcutsOpen = ref(false);
 
 onMounted(() => {
 	if (!projects.items.length) projects.load();
+	notifications.refresh();
+	notifications.connect();
+});
+
+onUnmounted(() => {
+	notifications.disconnect();
 });
 
 useShortcuts({
@@ -148,6 +162,13 @@ async function logout() {
 					</div>
 				</div>
 				<NotificationsBell />
+				<button
+					class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)]"
+					:title="isLight ? 'Switch to dark mode' : 'Switch to light mode'"
+					@click="toggleTheme"
+				>
+					<component :is="isLight ? Moon : Sun" class="h-4 w-4" />
+				</button>
 				<router-link
 					:to="{ name: 'settings' }"
 					class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)]"
@@ -171,5 +192,6 @@ async function logout() {
 
 		<CommandPalette v-model:open="paletteOpen" />
 		<ConfirmDialog />
+		<KeyboardShortcutsModal v-model:open="shortcutsOpen" />
 	</div>
 </template>

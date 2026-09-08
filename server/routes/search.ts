@@ -1,4 +1,4 @@
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getDb } from "@server/db/client";
 import {
@@ -71,7 +71,12 @@ app.get("/", async (c) => {
 					})
 					.from(issues)
 					.innerJoin(projects, eq(projects.id, issues.projectId))
-					.where(ilike(issues.title, wildcard))
+					.where(
+						sql`${issues.searchVector} @@ websearch_to_tsquery('english', ${q})`,
+					)
+					.orderBy(
+						sql`ts_rank(${issues.searchVector}, websearch_to_tsquery('english', ${q})) DESC`,
+					)
 					.limit(8),
 
 		db

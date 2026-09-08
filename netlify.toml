@@ -1,3 +1,7 @@
+[[edge_functions]]
+path = "/api/sse"
+function = "sse"
+
 [build]
 command = "bun run db:migrate && bun run build"
 publish = "dist"

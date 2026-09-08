@@ -22,6 +22,12 @@ const bytea = customType<{ data: Buffer; default: false }>({
 	},
 });
 
+const tsvector = customType<{ data: string }>({
+	dataType() {
+		return "tsvector";
+	},
+});
+
 export const userRole = pgEnum("user_role", ["owner", "admin", "member"]);
 export const projectStatus = pgEnum("project_status", [
 	"active",
@@ -93,6 +99,12 @@ export const notificationKind = pgEnum("notification_kind", [
 	"comment",
 	"status_change",
 	"invite",
+]);
+
+export const issueLinkKind = pgEnum("issue_link_kind", [
+	"blocks",
+	"duplicates",
+	"relates_to",
 ]);
 
 export const webhookEvent = pgEnum("webhook_event", [
@@ -242,8 +254,10 @@ export const issues = pgTable(
 		}),
 		sprintId: uuid().references(() => sprints.id, { onDelete: "set null" }),
 		labels: jsonb().$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+		prUrl: text(),
 		dueAt: timestamp({ withTimezone: true }),
 		completedAt: timestamp({ withTimezone: true }),
+		searchVector: tsvector(),
 		createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 	},
@@ -472,6 +486,52 @@ export const webhookDeliveries = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Issue links (blocks / duplicates / relates_to)
+// ---------------------------------------------------------------------------
+export const issueLinks = pgTable(
+	"issue_links",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		sourceId: uuid()
+			.notNull()
+			.references(() => issues.id, { onDelete: "cascade" }),
+		targetId: uuid()
+			.notNull()
+			.references(() => issues.id, { onDelete: "cascade" }),
+		kind: issueLinkKind().notNull().default("relates_to"),
+		createdById: uuid().references(() => users.id, { onDelete: "set null" }),
+		createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+	},
+	(t) => [
+		uniqueIndex("issue_links_uniq").on(t.sourceId, t.targetId, t.kind),
+		index("issue_links_source_idx").on(t.sourceId),
+		index("issue_links_target_idx").on(t.targetId),
+	],
+);
+
+// ---------------------------------------------------------------------------
+// Issue templates per project
+// ---------------------------------------------------------------------------
+export const issueTemplates = pgTable(
+	"issue_templates",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		projectId: uuid()
+			.notNull()
+			.references(() => projects.id, { onDelete: "cascade" }),
+		name: varchar({ length: 120 }).notNull(),
+		description: text(),
+		type: issueType().notNull().default("task"),
+		priority: issuePriority().notNull().default("medium"),
+		labels: jsonb().$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+		body: text(),
+		createdById: uuid().references(() => users.id, { onDelete: "set null" }),
+		createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+	},
+	(t) => [index("issue_templates_project_idx").on(t.projectId)],
+);
+
+// ---------------------------------------------------------------------------
 // MFA (TOTP)
 // ---------------------------------------------------------------------------
 export const userMfa = pgTable("user_mfa", {
@@ -607,3 +667,5 @@ export type ApiToken = typeof apiTokens.$inferSelect;
 export type SavedFilter = typeof savedFilters.$inferSelect;
 export type Webhook = typeof webhooks.$inferSelect;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+export type IssueLink = typeof issueLinks.$inferSelect;
+export type IssueTemplate = typeof issueTemplates.$inferSelect;

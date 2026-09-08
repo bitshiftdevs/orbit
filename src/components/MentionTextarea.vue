@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import Avatar from "@/components/ui/Avatar.vue";
+import Markdown from "@/components/ui/Markdown.vue";
 
 type Member = {
 	id: string;
@@ -16,9 +17,12 @@ const props = withDefaults(
 		members: Member[];
 		placeholder?: string;
 		rows?: number;
+		previewable?: boolean;
 	}>(),
-	{ rows: 3 },
+	{ rows: 3, previewable: false },
 );
+
+const previewing = ref(false);
 
 const emit = defineEmits<{ "update:modelValue": [value: string] }>();
 
@@ -86,7 +90,29 @@ function onKey(e: KeyboardEvent) {
 
 <template>
 	<div class="relative">
+		<div v-if="previewable" class="flex items-center gap-2 mb-1">
+			<button
+				type="button"
+				class="text-[11px] px-2 py-0.5 rounded"
+				:class="!previewing ? 'text-[var(--color-fg)] bg-[var(--color-panel-hover)]' : 'text-[var(--color-fg-subtle)]'"
+				@click="previewing = false"
+			>Edit</button>
+			<button
+				type="button"
+				class="text-[11px] px-2 py-0.5 rounded"
+				:class="previewing ? 'text-[var(--color-fg)] bg-[var(--color-panel-hover)]' : 'text-[var(--color-fg-subtle)]'"
+				@click="previewing = true"
+			>Preview</button>
+		</div>
+
+		<div
+			v-if="previewing && previewable"
+			class="min-h-[80px] rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2"
+		>
+			<Markdown :source="modelValue || '*Nothing to preview.*'" />
+		</div>
 		<textarea
+			v-else
 			ref="areaRef"
 			:value="modelValue"
 			:placeholder="placeholder"

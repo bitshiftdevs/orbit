@@ -13,7 +13,7 @@ export function getDb() {
     max: 5,
     idle_timeout: 30,
     prepare: false,
-    ...(process.env.NODE_ENV === "development"
+    ...(process.env.NODE_ENV === "production"
       ? { ssl: { rejectUnauthorized: false } }
       : {}),
   });
