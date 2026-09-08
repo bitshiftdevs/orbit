@@ -1,0 +1,1 @@
+ALTER TYPE "public"."audit_action" ADD VALUE 'file.edit' BEFORE 'file.delete';

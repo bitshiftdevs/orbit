@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
-import { Download, Eye, File as FileIcon, Trash2, Upload, X } from "lucide-vue-next";
+import { Download, Edit3, Eye, File as FileIcon, Trash2, Upload, X } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
+import Markdown from "@/components/ui/Markdown.vue";
 import { api, type FileRow, type Project } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
 import { formatBytes, timeAgo } from "@/lib/utils";
@@ -114,10 +115,51 @@ function closePreview() {
 	previewing.value = null;
 	previewBlobUrl.value = null;
 	previewText.value = null;
+	editMode.value = false;
+	editContent.value = "";
 }
 
 function onPreviewKey(e: KeyboardEvent) {
 	if (e.key === "Escape") closePreview();
+}
+
+const editMode = ref(false);
+const editContent = ref("");
+const saving = ref(false);
+
+function isMarkdown(f: FileRow) {
+	return (
+		f.mimeType === "text/markdown" ||
+		f.mimeType === "text/x-markdown" ||
+		f.mimeType === "text/plain" ||
+		f.name.endsWith(".md") ||
+		f.name.endsWith(".markdown")
+	);
+}
+
+function enterEdit() {
+	editContent.value = previewText.value ?? "";
+	editMode.value = true;
+}
+
+async function saveEdit() {
+	if (!previewing.value) return;
+	saving.value = true;
+	try {
+		const { file: updated } = await api.patch<{ file: FileRow }>(
+			`/files/${previewing.value.id}/content`,
+			{ content: editContent.value },
+		);
+		previewText.value = editContent.value;
+		const idx = files.value.findIndex((f) => f.id === updated.id);
+		if (idx >= 0) files.value[idx] = { ...files.value[idx], ...updated };
+		editMode.value = false;
+		notify("Saved", "success");
+	} catch (err) {
+		notifyError(err);
+	} finally {
+		saving.value = false;
+	}
 }
 </script>
 
@@ -232,6 +274,29 @@ function onPreviewKey(e: KeyboardEvent) {
 						</p>
 					</div>
 					<div class="flex items-center gap-2 ml-4">
+						<template v-if="isMarkdown(previewing) && previewText !== null">
+							<div class="flex items-center rounded border border-white/15 overflow-hidden text-xs">
+								<button
+									class="px-3 py-1.5 flex items-center gap-1.5 transition-colors"
+									:class="!editMode ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'"
+									@click="editMode = false"
+								>
+									<Eye class="h-3.5 w-3.5" />
+									Preview
+								</button>
+								<button
+									class="px-3 py-1.5 flex items-center gap-1.5 transition-colors"
+									:class="editMode ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'"
+									@click="enterEdit"
+								>
+									<Edit3 class="h-3.5 w-3.5" />
+									Edit
+								</button>
+							</div>
+							<Button v-if="editMode" size="sm" variant="primary" :loading="saving" @click="saveEdit">
+								Save
+							</Button>
+						</template>
 						<Button size="sm" variant="outline" @click="download(previewing)">
 							<Download class="h-3.5 w-3.5" />
 							Download
@@ -276,10 +341,25 @@ function onPreviewKey(e: KeyboardEvent) {
 						/>
 					</template>
 
-					<pre
-						v-else-if="previewText !== null"
-						class="text-sm text-white/90 bg-white/5 rounded p-5 max-h-full overflow-auto max-w-4xl w-full font-mono whitespace-pre-wrap break-all"
-					>{{ previewText }}</pre>
+					<template v-else-if="previewText !== null">
+						<div
+							v-if="isMarkdown(previewing) && !editMode"
+							class="bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] p-8 max-h-full overflow-auto max-w-3xl w-full"
+						>
+							<Markdown :source="previewText" />
+						</div>
+						<textarea
+							v-else-if="isMarkdown(previewing) && editMode"
+							v-model="editContent"
+							class="w-full max-w-3xl bg-[var(--color-bg)] text-[var(--color-fg)] rounded-lg border border-[var(--color-border)] p-6 font-mono text-sm resize-none outline-none focus:border-[var(--color-accent)] transition-colors"
+							style="height: 80vh"
+							placeholder="Write markdown here…"
+						/>
+						<pre
+							v-else
+							class="text-sm text-white/90 bg-white/5 rounded p-5 max-h-full overflow-auto max-w-4xl w-full font-mono whitespace-pre-wrap break-all"
+						>{{ previewText }}</pre>
+					</template>
 				</div>
 			</div>
 		</Transition>

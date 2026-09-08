@@ -8,6 +8,13 @@
       "when": 1788857505362,
       "tag": "0000_square_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788863254621,
+      "tag": "0001_old_nomad",
+      "breakpoints": true
     }
   ]
 }

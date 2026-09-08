@@ -71,6 +71,7 @@ export const auditAction = pgEnum("audit_action", [
 	"envvar.delete",
 	"file.download",
 	"file.upload",
+	"file.edit",
 	"file.delete",
 	"member.invite",
 	"member.remove",

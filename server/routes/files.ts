@@ -1,4 +1,5 @@
 import { desc, eq } from "drizzle-orm";
+import { z } from "zod";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { getDb } from "@server/db/client";
@@ -123,6 +124,46 @@ app.get("/files/:id/download", async (c) => {
 			"content-disposition": `attachment; filename="${encodeURIComponent(row.name)}"`,
 		},
 	});
+});
+
+app.patch("/files/:id/content", async (c) => {
+	const db = getDb();
+	const [existing] = await db
+		.select()
+		.from(files)
+		.where(eq(files.id, c.req.param("id")))
+		.limit(1);
+	if (!existing) throw new HTTPException(404, { message: "file not found" });
+	await assertMember(c.get("user"), existing.projectId);
+	const isEditable =
+		existing.mimeType.startsWith("text/") ||
+		existing.mimeType === "application/json" ||
+		existing.name.endsWith(".md") ||
+		existing.name.endsWith(".markdown");
+	if (!isEditable) throw new HTTPException(400, { message: "file is not editable" });
+	const { content } = z.object({ content: z.string().max(500_000) }).parse(await c.req.json());
+	const buf = Buffer.from(content, "utf-8");
+	const [row] = await db
+		.update(files)
+		.set({ data: buf, sizeBytes: buf.byteLength, sha256: sha256Hex(buf) })
+		.where(eq(files.id, existing.id))
+		.returning({
+			id: files.id,
+			name: files.name,
+			mimeType: files.mimeType,
+			sizeBytes: files.sizeBytes,
+			sha256: files.sha256,
+			issueId: files.issueId,
+			uploadedById: files.uploadedById,
+			createdAt: files.createdAt,
+		});
+	await audit(c, {
+		action: "file.edit",
+		projectId: existing.projectId,
+		targetId: row.id,
+		targetName: row.name,
+	});
+	return c.json({ file: row });
 });
 
 app.delete("/files/:id", async (c) => {
