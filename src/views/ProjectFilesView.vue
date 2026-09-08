@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
-import { Download, File as FileIcon, Trash2, Upload } from "lucide-vue-next";
+import { Download, Eye, File as FileIcon, Trash2, Upload, X } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
 import { api, type FileRow, type Project } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
@@ -66,6 +66,51 @@ async function remove(f: FileRow) {
 
 function download(f: FileRow) {
 	window.open(`/api/files/${f.id}/download`, "_blank");
+}
+
+const previewing = ref<FileRow | null>(null);
+const previewText = ref<string | null>(null);
+const previewLoading = ref(false);
+
+function previewable(f: FileRow) {
+	return (
+		f.mimeType.startsWith("image/") ||
+		f.mimeType.startsWith("video/") ||
+		f.mimeType.startsWith("audio/") ||
+		f.mimeType === "application/pdf" ||
+		f.mimeType.startsWith("text/") ||
+		f.mimeType === "application/json" ||
+		f.mimeType === "application/xml"
+	);
+}
+
+async function openPreview(f: FileRow) {
+	previewing.value = f;
+	previewText.value = null;
+	const isText =
+		f.mimeType.startsWith("text/") ||
+		f.mimeType === "application/json" ||
+		f.mimeType === "application/xml";
+	if (isText) {
+		previewLoading.value = true;
+		try {
+			const res = await fetch(`/api/files/${f.id}/download`, { credentials: "include" });
+			previewText.value = await res.text();
+		} catch {
+			previewText.value = null;
+		} finally {
+			previewLoading.value = false;
+		}
+	}
+}
+
+function closePreview() {
+	previewing.value = null;
+	previewText.value = null;
+}
+
+function onPreviewKey(e: KeyboardEvent) {
+	if (e.key === "Escape") closePreview();
 }
 </script>
 
@@ -133,7 +178,16 @@ function download(f: FileRow) {
 							</div>
 						</div>
 						<button
+							v-if="previewable(f)"
 							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+							title="Preview"
+							@click="openPreview(f)"
+						>
+							<Eye class="h-4 w-4" />
+						</button>
+						<button
+							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+							title="Download"
 							@click="download(f)"
 						>
 							<Download class="h-4 w-4" />
@@ -149,4 +203,78 @@ function download(f: FileRow) {
 			</div>
 		</div>
 	</div>
+
+	<Teleport to="body">
+		<Transition
+			enter-active-class="transition-opacity duration-150"
+			enter-from-class="opacity-0"
+			leave-active-class="transition-opacity duration-100"
+			leave-to-class="opacity-0"
+		>
+			<div
+				v-if="previewing"
+				class="fixed inset-0 z-50 bg-black/90 flex flex-col"
+				@keydown="onPreviewKey"
+				tabindex="-1"
+			>
+				<header class="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+					<div class="min-w-0 flex-1">
+						<p class="text-sm font-medium text-white truncate">{{ previewing.name }}</p>
+						<p class="text-[11px] text-white/50">
+							{{ formatBytes(previewing.sizeBytes) }} · {{ previewing.mimeType }}
+						</p>
+					</div>
+					<div class="flex items-center gap-2 ml-4">
+						<Button size="sm" variant="outline" @click="download(previewing)">
+							<Download class="h-3.5 w-3.5" />
+							Download
+						</Button>
+						<button
+							class="p-1.5 rounded text-white/60 hover:text-white hover:bg-white/10"
+							@click="closePreview"
+						>
+							<X class="h-5 w-5" />
+						</button>
+					</div>
+				</header>
+
+				<div class="flex-1 overflow-auto flex items-center justify-center p-6" @click.self="closePreview">
+					<div v-if="previewLoading" class="text-white/50 text-sm">Loading…</div>
+
+					<img
+						v-else-if="previewing.mimeType.startsWith('image/')"
+						:src="`/api/files/${previewing.id}/download`"
+						:alt="previewing.name"
+						class="max-h-full max-w-full object-contain rounded"
+					/>
+
+					<iframe
+						v-else-if="previewing.mimeType === 'application/pdf'"
+						:src="`/api/files/${previewing.id}/download`"
+						class="w-full h-full rounded border-0"
+						style="min-height: 70vh"
+					/>
+
+					<video
+						v-else-if="previewing.mimeType.startsWith('video/')"
+						:src="`/api/files/${previewing.id}/download`"
+						controls
+						class="max-h-full max-w-full rounded"
+					/>
+
+					<audio
+						v-else-if="previewing.mimeType.startsWith('audio/')"
+						:src="`/api/files/${previewing.id}/download`"
+						controls
+						class="w-80"
+					/>
+
+					<pre
+						v-else-if="previewText !== null"
+						class="text-sm text-white/90 bg-white/5 rounded p-5 max-h-full overflow-auto max-w-4xl w-full font-mono whitespace-pre-wrap break-all"
+					>{{ previewText }}</pre>
+				</div>
+			</div>
+		</Transition>
+	</Teleport>
 </template>
