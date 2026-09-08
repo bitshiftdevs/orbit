@@ -9,9 +9,22 @@ import { timeAgo } from "@/lib/utils";
 const store = useNotifications();
 const open = ref(false);
 const router = useRouter();
+const containerRef = ref<HTMLElement | null>(null);
 
-onMounted(() => store.startPolling());
-onUnmounted(() => store.stopPolling());
+function onClickOutside(e: MouseEvent) {
+	if (open.value && containerRef.value && !containerRef.value.contains(e.target as Node)) {
+		open.value = false;
+	}
+}
+
+onMounted(() => {
+	store.startPolling();
+	document.addEventListener("mousedown", onClickOutside);
+});
+onUnmounted(() => {
+	store.stopPolling();
+	document.removeEventListener("mousedown", onClickOutside);
+});
 
 const iconFor = {
 	mention: AtSign,
@@ -31,7 +44,7 @@ async function go(n: (typeof store.items)[number]) {
 </script>
 
 <template>
-	<div class="relative">
+	<div ref="containerRef" class="relative">
 		<button
 			class="relative p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)]"
 			title="Notifications"
@@ -48,13 +61,13 @@ async function go(n: (typeof store.items)[number]) {
 
 		<Transition
 			enter-active-class="transition-all duration-100 ease-out"
-			enter-from-class="opacity-0 -translate-y-1"
+			enter-from-class="opacity-0 translate-y-1"
 			leave-active-class="transition-all duration-75"
-			leave-to-class="opacity-0 -translate-y-1"
+			leave-to-class="opacity-0 translate-y-1"
 		>
 			<div
 				v-if="open"
-				class="absolute right-0 top-full mt-2 w-[360px] card glow z-50 max-h-[70vh] overflow-hidden flex flex-col"
+				class="absolute left-full bottom-0 ml-2 w-[360px] card glow z-50 max-h-[70vh] overflow-hidden flex flex-col"
 			>
 				<div class="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-2">
 					<h3 class="text-xs uppercase tracking-widest text-[var(--color-fg-subtle)] font-semibold">
