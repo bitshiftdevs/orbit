@@ -6,22 +6,24 @@ let cachedDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let cachedSql: postgres.Sql | null = null;
 
 export function getDb() {
-	if (cachedDb) return cachedDb;
-	const url = process.env.DATABASE_URL;
-	if (!url) throw new Error("DATABASE_URL is not set");
-	cachedSql = postgres(url, {
-		max: 5,
-		idle_timeout: 30,
-		prepare: false,
-		ssl: { rejectUnauthorized: false },
-	});
-	cachedDb = drizzle(cachedSql, { schema, casing: "snake_case" });
-	return cachedDb;
+  if (cachedDb) return cachedDb;
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is not set");
+  cachedSql = postgres(url, {
+    max: 5,
+    idle_timeout: 30,
+    prepare: false,
+    ...(process.env.NODE_ENV === "development"
+      ? { ssl: { rejectUnauthorized: false } }
+      : {}),
+  });
+  cachedDb = drizzle(cachedSql, { schema, casing: "snake_case" });
+  return cachedDb;
 }
 
 export function getSql() {
-	if (!cachedSql) getDb();
-	return cachedSql!;
+  if (!cachedSql) getDb();
+  return cachedSql!;
 }
 
 export type DB = ReturnType<typeof getDb>;

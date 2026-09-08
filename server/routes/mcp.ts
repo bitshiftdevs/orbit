@@ -416,8 +416,17 @@ app.all("/", async (c) => {
 	const server = buildServer(c.get("user"));
 	await server.connect(transport);
 	const response = await transport.handleRequest(c.req.raw);
-	await server.close();
-	return response;
+
+	if (!response.body) {
+		await server.close();
+		return response;
+	}
+
+	// Pipe through a passthrough so server.close() runs only after the response
+	// body has been fully streamed, not before (which would empty the stream).
+	const { readable, writable } = new TransformStream();
+	response.body.pipeTo(writable).finally(() => server.close());
+	return new Response(readable, response);
 });
 
 export default app;
