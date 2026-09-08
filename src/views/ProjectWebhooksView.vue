@@ -318,7 +318,7 @@ function pickPreset(p: "generic" | "slack" | "discord") {
 		>
 			<div class="p-5 space-y-3">
 				<p class="text-xs text-[var(--color-fg-muted)]">
-					Verify inbound requests using <code class="mono">X-Orbit-Signature: sha256=<HMAC></code>.
+					Verify inbound requests using <code class="mono">X-Orbit-Signature: sha256=&lt;HMAC&gt;</code>.
 					Save this now — it won't be shown again.
 				</p>
 				<div class="flex items-center gap-2 p-3 rounded border border-[var(--color-accent)]/40 bg-[var(--color-accent-soft)]">
