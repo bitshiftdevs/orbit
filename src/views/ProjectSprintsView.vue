@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
 import Textarea from "@/components/ui/Textarea.vue";
+import DatePicker from "@/components/ui/DatePicker.vue";
 import { api } from "@/lib/api";
 import type { Project, Sprint, SprintBurndown } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
@@ -199,11 +200,11 @@ async function toggleBurndown(s: Sprint) {
 				<div class="grid grid-cols-2 gap-3">
 					<div class="space-y-1">
 						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Starts</label>
-						<Input v-model="form.startsAt" type="date" />
+						<DatePicker v-model="form.startsAt" />
 					</div>
 					<div class="space-y-1">
 						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Ends</label>
-						<Input v-model="form.endsAt" type="date" />
+						<DatePicker v-model="form.endsAt" />
 					</div>
 				</div>
 			</div>

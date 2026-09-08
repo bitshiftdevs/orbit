@@ -7,6 +7,8 @@ import Select from "@/components/ui/Select.vue";
 import Textarea from "@/components/ui/Textarea.vue";
 import { api, type Issue, type IssueStatus, type SessionUser, type Sprint } from "@/lib/api";
 import { notify, notifyError } from "@/lib/notify";
+import { STATUS_META, TYPE_META, PRIORITY_META } from "@/components/issue/meta";
+import type { IssueType, IssuePriority } from "@/types/domain";
 
 const props = defineProps<{
 	open: boolean;
@@ -30,6 +32,27 @@ const status = ref<IssueStatus>("todo");
 const assigneeId = ref("");
 const sprintId = ref("");
 const saving = ref(false);
+
+const TYPE_OPTIONS = (Object.keys(TYPE_META) as IssueType[]).map((k) => ({
+	value: k,
+	label: TYPE_META[k].label,
+	icon: TYPE_META[k].icon,
+	iconClass: TYPE_META[k].text,
+}));
+
+const PRIORITY_OPTIONS = (Object.keys(PRIORITY_META) as IssuePriority[]).map((k) => ({
+	value: k,
+	label: PRIORITY_META[k].label,
+	icon: PRIORITY_META[k].icon,
+	iconClass: PRIORITY_META[k].text,
+}));
+
+const STATUS_OPTIONS = (["backlog", "todo", "in_progress", "in_review"] as IssueStatus[]).map((k) => ({
+	value: k,
+	label: STATUS_META[k].label,
+	icon: STATUS_META[k].icon,
+	iconClass: STATUS_META[k].text,
+}));
 
 watch(
 	() => props.open,
@@ -92,41 +115,15 @@ async function submit() {
 			<div class="grid grid-cols-2 gap-3">
 				<label class="space-y-1">
 					<span class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Type</span>
-					<Select
-						v-model="type"
-						:options="[
-							{ value: 'task', label: 'Task' },
-							{ value: 'bug', label: 'Bug' },
-							{ value: 'story', label: 'Story' },
-							{ value: 'chore', label: 'Chore' },
-							{ value: 'epic', label: 'Epic' },
-						]"
-					/>
+					<Select v-model="type" :options="TYPE_OPTIONS" />
 				</label>
 				<label class="space-y-1">
 					<span class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Priority</span>
-					<Select
-						v-model="priority"
-						:options="[
-							{ value: 'trivial', label: 'Trivial' },
-							{ value: 'low', label: 'Low' },
-							{ value: 'medium', label: 'Medium' },
-							{ value: 'high', label: 'High' },
-							{ value: 'urgent', label: 'Urgent' },
-						]"
-					/>
+					<Select v-model="priority" :options="PRIORITY_OPTIONS" />
 				</label>
 				<label class="space-y-1">
 					<span class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Status</span>
-					<Select
-						v-model="status"
-						:options="[
-							{ value: 'backlog', label: 'Backlog' },
-							{ value: 'todo', label: 'Todo' },
-							{ value: 'in_progress', label: 'In progress' },
-							{ value: 'in_review', label: 'In review' },
-						]"
-					/>
+					<Select v-model="status" :options="STATUS_OPTIONS" />
 				</label>
 				<label class="space-y-1">
 					<span class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Assignee</span>

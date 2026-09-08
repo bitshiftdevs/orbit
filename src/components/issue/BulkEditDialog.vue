@@ -4,6 +4,7 @@ import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Select from "@/components/ui/Select.vue";
 import type { BulkIssuePatch, IssuePriority, IssueStatus, SessionUser, Sprint } from "@/types/domain";
+import { STATUS_META, PRIORITY_META } from "@/components/issue/meta";
 
 const props = defineProps<{
 	open: boolean;
@@ -19,6 +20,26 @@ const emit = defineEmits<{
 
 const blank: BulkIssuePatch = { status: "", priority: "", assigneeId: "", sprintId: "" };
 const patch = ref<BulkIssuePatch>({ ...blank });
+
+const STATUS_OPTIONS = [
+	{ value: "", label: "— unchanged —" },
+	...(Object.keys(STATUS_META) as IssueStatus[]).map((k) => ({
+		value: k,
+		label: STATUS_META[k].label,
+		icon: STATUS_META[k].icon,
+		iconClass: STATUS_META[k].text,
+	})),
+];
+
+const PRIORITY_OPTIONS = [
+	{ value: "", label: "— unchanged —" },
+	...(Object.keys(PRIORITY_META) as IssuePriority[]).map((k) => ({
+		value: k,
+		label: PRIORITY_META[k].label,
+		icon: PRIORITY_META[k].icon,
+		iconClass: PRIORITY_META[k].text,
+	})),
+];
 
 watch(() => props.open, (v) => {
 	if (v) patch.value = { ...blank };
@@ -38,32 +59,11 @@ function apply() {
 			</p>
 			<div class="space-y-1">
 				<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Status</label>
-				<Select
-					v-model="patch.status"
-					:options="[
-						{ value: '', label: '— unchanged —' },
-						{ value: 'backlog', label: 'Backlog' },
-						{ value: 'todo', label: 'Todo' },
-						{ value: 'in_progress', label: 'In progress' },
-						{ value: 'in_review', label: 'In review' },
-						{ value: 'done', label: 'Done' },
-						{ value: 'cancelled', label: 'Cancelled' },
-					]"
-				/>
+				<Select v-model="patch.status" :options="STATUS_OPTIONS" />
 			</div>
 			<div class="space-y-1">
 				<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Priority</label>
-				<Select
-					v-model="patch.priority"
-					:options="[
-						{ value: '', label: '— unchanged —' },
-						{ value: 'trivial', label: 'Trivial' },
-						{ value: 'low', label: 'Low' },
-						{ value: 'medium', label: 'Medium' },
-						{ value: 'high', label: 'High' },
-						{ value: 'urgent', label: 'Urgent' },
-					]"
-				/>
+				<Select v-model="patch.priority" :options="PRIORITY_OPTIONS" />
 			</div>
 			<div class="space-y-1">
 				<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Assignee</label>

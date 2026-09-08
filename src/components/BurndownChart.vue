@@ -104,7 +104,7 @@ const view = computed(() => {
 
 			<!-- X labels (sparse) -->
 			<text
-				v-for="(l, i) in view.xLabels.filter((_, i) => i % Math.ceil(view.xLabels.length / 6) === 0)"
+				v-for="(l, i) in view!.xLabels.filter((_, i) => i % Math.ceil(view!.xLabels.length / 6) === 0)"
 				:key="`x${i}`"
 				:x="l.x"
 				:y="H - 10"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useConfirmDialog } from "@/composables/useConfirmDialog";
 import { Edit3, Eye, Trash2, X } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
@@ -9,10 +9,14 @@ import Markdown from "@/components/ui/Markdown.vue";
 import MentionTextarea from "@/components/MentionTextarea.vue";
 import Select from "@/components/ui/Select.vue";
 import Textarea from "@/components/ui/Textarea.vue";
+import DatePicker from "@/components/ui/DatePicker.vue";
+import PrioritySelect from "@/components/issue/PrioritySelect.vue";
+import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
 import { api } from "@/lib/api";
-import type { Issue, IssueComment, IssuePriority, IssueStatus, IssueType, Project, SessionUser, Sprint } from "@/types/domain";
+import type { Issue, IssueComment, IssueStatus, IssueType, Project, SessionUser, Sprint } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
+import { STATUS_META, TYPE_META } from "@/components/issue/meta";
 
 const props = defineProps<{
 	issueId: string | null;
@@ -30,44 +34,79 @@ const project = ref<Project | null>(null);
 const comments = ref<IssueComment[]>([]);
 const sprints = ref<Sprint[]>([]);
 const loading = ref(false);
+const saving = ref(false);
 const newComment = ref("");
 const editingDescription = ref(false);
 
-const STATUS_OPTIONS = [
-	{ value: "backlog", label: "Backlog" },
-	{ value: "todo", label: "Todo" },
-	{ value: "in_progress", label: "In progress" },
-	{ value: "in_review", label: "In review" },
-	{ value: "done", label: "Done" },
-	{ value: "cancelled", label: "Cancelled" },
-];
-const PRIORITY_OPTIONS = [
-	{ value: "trivial", label: "Trivial" },
-	{ value: "low", label: "Low" },
-	{ value: "medium", label: "Medium" },
-	{ value: "high", label: "High" },
-	{ value: "urgent", label: "Urgent" },
-];
-const TYPE_OPTIONS = [
-	{ value: "task", label: "Task" },
-	{ value: "bug", label: "Bug" },
-	{ value: "story", label: "Story" },
-	{ value: "chore", label: "Chore" },
-	{ value: "epic", label: "Epic" },
-];
+type Draft = {
+	title: string;
+	description: string | null;
+	status: IssueStatus;
+	priority: Issue["priority"];
+	type: IssueType;
+	assigneeId: string | null;
+	storyPoints: number | null;
+	dueAt: string | null;
+	sprintId: string | null;
+};
+
+const draft = ref<Draft | null>(null);
+
+function initDraft() {
+	if (!issue.value) { draft.value = null; return; }
+	const i = issue.value;
+	draft.value = {
+		title: i.title,
+		description: i.description ?? null,
+		status: i.status,
+		priority: i.priority,
+		type: i.type,
+		assigneeId: i.assigneeId ?? null,
+		storyPoints: i.storyPoints ?? null,
+		dueAt: i.dueAt ?? null,
+		sprintId: i.sprintId ?? null,
+	};
+}
+
+const isDirty = computed(() => {
+	if (!issue.value || !draft.value) return false;
+	const d = draft.value;
+	const i = issue.value;
+	return (
+		d.title !== i.title ||
+		(d.description ?? null) !== (i.description ?? null) ||
+		d.status !== i.status ||
+		d.priority !== i.priority ||
+		d.type !== i.type ||
+		(d.assigneeId ?? null) !== (i.assigneeId ?? null) ||
+		(d.storyPoints ?? null) !== (i.storyPoints ?? null) ||
+		(d.dueAt ?? null) !== (i.dueAt ?? null) ||
+		(d.sprintId ?? null) !== (i.sprintId ?? null)
+	);
+});
+
+const STATUS_OPTIONS = (Object.keys(STATUS_META) as IssueStatus[]).map((k) => ({
+	value: k,
+	label: STATUS_META[k].label,
+	icon: STATUS_META[k].icon,
+	iconClass: STATUS_META[k].text,
+}));
+
+const TYPE_OPTIONS = (Object.keys(TYPE_META) as IssueType[]).map((k) => ({
+	value: k,
+	label: TYPE_META[k].label,
+	icon: TYPE_META[k].icon,
+	iconClass: TYPE_META[k].text,
+}));
 
 const { confirm } = useConfirmDialog();
-
-const assigneeOptions = computed(() => [
-	{ value: "", label: "Unassigned" },
-	...props.members.map((m) => ({ value: m.id, label: m.name })),
-]);
 
 watch(
 	() => props.issueId,
 	async (id) => {
 		if (!id) {
 			issue.value = null;
+			draft.value = null;
 			return;
 		}
 		loading.value = true;
@@ -80,6 +119,7 @@ watch(
 			issue.value = res.issue;
 			project.value = res.project;
 			comments.value = res.comments;
+			initDraft();
 			const { sprints: rows } = await api.get<{ sprints: Sprint[] }>(
 				`/projects/${res.project.key}/sprints`,
 			);
@@ -94,18 +134,39 @@ watch(
 	{ immediate: true },
 );
 
-async function patch<K extends keyof Issue>(key: K, value: Issue[K]) {
-	if (!issue.value) return;
+async function save() {
+	if (!issue.value || !draft.value || !isDirty.value) return;
+	saving.value = true;
 	try {
 		const { issue: updated } = await api.patch<{ issue: Issue }>(
 			`/issues/${issue.value.id}`,
-			{ [key]: value },
+			{
+				title: draft.value.title,
+				description: draft.value.description,
+				status: draft.value.status,
+				priority: draft.value.priority,
+				type: draft.value.type,
+				assigneeId: draft.value.assigneeId,
+				storyPoints: draft.value.storyPoints,
+				dueAt: draft.value.dueAt,
+				sprintId: draft.value.sprintId,
+			},
 		);
-		issue.value = { ...updated, key: issue.value.key, assignee: issue.value.assignee };
+		issue.value = { ...updated, key: issue.value.key };
+		initDraft();
+		editingDescription.value = false;
 		emit("updated", issue.value);
+		notify("Issue saved", "success");
 	} catch (err) {
 		notifyError(err);
+	} finally {
+		saving.value = false;
 	}
+}
+
+function discard() {
+	initDraft();
+	editingDescription.value = false;
 }
 
 async function submitComment() {
@@ -161,14 +222,18 @@ async function remove() {
 				class="fixed right-0 top-0 z-50 h-full w-full sm:w-[640px] bg-[var(--color-bg)] border-l border-[var(--color-border)] flex flex-col"
 			>
 				<header
-					class="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3"
+					class="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3 gap-3"
 				>
-					<div class="flex items-center gap-3">
-						<span class="mono text-xs text-[var(--color-fg-subtle)]">
-							{{ issue?.key ?? "…" }}
-						</span>
-					</div>
-					<div class="flex items-center gap-1">
+					<span class="mono text-xs text-[var(--color-fg-subtle)] shrink-0">
+						{{ issue?.key ?? "…" }}
+					</span>
+
+					<div class="flex items-center gap-1 ml-auto">
+						<template v-if="isDirty && draft">
+							<span class="text-[11px] text-[var(--color-fg-subtle)] mr-1">Unsaved changes</span>
+							<Button variant="ghost" size="sm" @click="discard">Discard</Button>
+							<Button variant="primary" size="sm" :loading="saving" @click="save">Save</Button>
+						</template>
 						<button
 							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-red-400 hover:bg-red-500/10"
 							title="Delete"
@@ -185,16 +250,15 @@ async function remove() {
 					</div>
 				</header>
 
-				<div v-if="loading || !issue" class="flex-1 flex items-center justify-center text-sm text-[var(--color-fg-subtle)]">
+				<div v-if="loading || !issue || !draft" class="flex-1 flex items-center justify-center text-sm text-[var(--color-fg-subtle)]">
 					loading…
 				</div>
 
 				<div v-else class="flex-1 overflow-y-auto p-5 space-y-5">
 					<div>
 						<input
-							v-model="issue.title"
+							v-model="draft.title"
 							class="w-full bg-transparent text-xl font-semibold text-[var(--color-fg)] outline-none focus:bg-[var(--color-panel)] rounded px-2 -mx-2 py-1"
-							@change="patch('title', issue.title)"
 						/>
 					</div>
 
@@ -202,60 +266,58 @@ async function remove() {
 						<label class="space-y-1">
 							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Status</span>
 							<Select
-								:model-value="issue.status"
+								:model-value="draft.status"
 								:options="STATUS_OPTIONS"
-								@update:model-value="(v) => patch('status', v as IssueStatus)"
+								@update:model-value="(v) => draft!.status = v as IssueStatus"
 							/>
 						</label>
-						<label class="space-y-1">
+						<div class="space-y-1">
 							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Priority</span>
-							<Select
-								:model-value="issue.priority"
-								:options="PRIORITY_OPTIONS"
-								@update:model-value="(v) => patch('priority', v as IssuePriority)"
+							<PrioritySelect
+								:model-value="draft.priority"
+								@update:model-value="(v) => draft!.priority = v"
 							/>
-						</label>
+						</div>
 						<label class="space-y-1">
 							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Type</span>
 							<Select
-								:model-value="issue.type"
+								:model-value="draft.type"
 								:options="TYPE_OPTIONS"
-								@update:model-value="(v) => patch('type', v as IssueType)"
+								@update:model-value="(v) => draft!.type = v as IssueType"
 							/>
 						</label>
-						<label class="space-y-1">
+						<div class="space-y-1">
 							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Assignee</span>
-							<Select
-								:model-value="issue.assigneeId ?? ''"
-								:options="assigneeOptions"
-								@update:model-value="(v) => patch('assigneeId', (v || null) as any)"
+							<AssigneeSelect
+								:model-value="draft.assigneeId"
+								:members="members"
+								@update:model-value="(v) => draft!.assigneeId = v"
 							/>
-						</label>
+						</div>
 						<label class="space-y-1">
 							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Story points</span>
 							<Input
 								type="number"
-								:model-value="issue.storyPoints ?? ''"
-								@update:model-value="(v) => patch('storyPoints', v === '' ? null : Number(v))"
+								:model-value="draft.storyPoints ?? ''"
+								@update:model-value="(v) => draft!.storyPoints = (v === '' ? null : Number(v))"
 							/>
 						</label>
-						<label class="space-y-1">
+						<div class="space-y-1">
 							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Due</span>
-							<Input
-								type="date"
-								:model-value="issue.dueAt ? issue.dueAt.slice(0, 10) : ''"
-								@update:model-value="(v) => patch('dueAt', v ? new Date(v).toISOString() : null)"
+							<DatePicker
+								:model-value="draft.dueAt ? draft.dueAt.slice(0, 10) : ''"
+								@update:model-value="(v) => draft!.dueAt = (v ? new Date(v).toISOString() : null)"
 							/>
-						</label>
+						</div>
 						<label class="space-y-1 col-span-2">
 							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Sprint</span>
 							<Select
-								:model-value="issue.sprintId ?? ''"
+								:model-value="draft.sprintId ?? ''"
 								:options="[
 									{ value: '', label: '— no sprint —' },
 									...sprints.map((s) => ({ value: s.id, label: s.name })),
 								]"
-								@update:model-value="(v) => patch('sprintId', (v || null) as any)"
+								@update:model-value="(v) => draft!.sprintId = (v || null)"
 							/>
 						</label>
 					</div>
@@ -277,19 +339,19 @@ async function remove() {
 							</button>
 						</div>
 						<Textarea
-							v-if="editingDescription || !issue.description"
-							v-model="issue.description"
+							v-if="editingDescription || !draft.description"
+							v-model="draft.description"
 							:rows="8"
 							placeholder="Markdown supported. **bold**, `code`, - lists, @mentions…"
 							class="mono"
-							@change="patch('description', issue!.description); editingDescription = false"
+							@change="editingDescription = false"
 						/>
 						<div
 							v-else
 							class="card p-3 cursor-text"
 							@click="editingDescription = true"
 						>
-							<Markdown :source="issue.description" />
+							<Markdown :source="draft.description" />
 						</div>
 					</div>
 
