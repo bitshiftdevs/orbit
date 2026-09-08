@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import OrbitLogo from "@/components/OrbitLogo.vue";
 import {
 	LogOut,
 	Search,
@@ -49,9 +50,9 @@ async function logout() {
 		>
 			<div class="px-4 py-4 flex items-center gap-2 border-b border-[var(--color-border)]">
 				<div
-					class="h-7 w-7 rounded-md grid place-items-center bg-[var(--color-accent)] text-white text-xs font-bold shadow-[0_0_20px_var(--color-accent-glow)]"
+					class="h-7 w-7 rounded-md grid place-items-center bg-[var(--color-accent)] shadow-[0_0_20px_var(--color-accent-glow)]"
 				>
-					◆
+					<OrbitLogo class="h-5 w-5" />
 				</div>
 				<div>
 					<div class="text-sm font-semibold tracking-tight">Orbit</div>
