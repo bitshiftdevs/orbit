@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { Download, Edit3, Eye, X } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
-import Markdown from "@/components/ui/Markdown.vue";
+import TiptapEditor from "@/components/ui/TiptapEditor.vue";
 import type { FileRow } from "@/types/domain";
 import { notify, notifyError } from "@/lib/notify";
 import { formatBytes } from "@/lib/utils";
@@ -198,18 +198,22 @@ function download(f: FileRow) {
 
 					<template v-else-if="previewText !== null">
 						<div
-							v-if="isMarkdown(file) && !editMode"
-							class="bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] p-8 max-h-full overflow-auto max-w-3xl w-full"
+							v-if="isMarkdown(file)"
+							class="bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] max-h-full overflow-auto max-w-3xl w-full"
+							:class="editMode ? '' : 'p-8'"
 						>
-							<Markdown :source="previewText" />
+							<TiptapEditor
+								v-if="editMode"
+								v-model="editContent"
+								placeholder="Write markdown here…"
+							/>
+							<TiptapEditor
+								v-else
+								:model-value="previewText ?? ''"
+								:readonly="true"
+								class="p-8"
+							/>
 						</div>
-						<textarea
-							v-else-if="isMarkdown(file) && editMode"
-							v-model="editContent"
-							class="w-full max-w-3xl bg-[var(--color-bg)] text-[var(--color-fg)] rounded-lg border border-[var(--color-border)] p-6 font-mono text-sm resize-none outline-none focus:border-[var(--color-accent)] transition-colors"
-							style="height: 80vh"
-							placeholder="Write markdown here…"
-						/>
 						<pre
 							v-else
 							class="text-sm text-white/90 bg-white/5 rounded p-5 max-h-full overflow-auto max-w-4xl w-full font-mono whitespace-pre-wrap break-all"

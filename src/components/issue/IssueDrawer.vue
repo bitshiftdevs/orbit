@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
 import { useConfirmDialog } from "@/composables/useConfirmDialog";
-import { Edit3, Eye, Link2, Plus, Trash2, X } from "lucide-vue-next";
+import { Link2, Plus, Trash2, X } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
 import Input from "@/components/ui/Input.vue";
-import Markdown from "@/components/ui/Markdown.vue";
-import MentionTextarea from "@/components/MentionTextarea.vue";
+import TiptapEditor from "@/components/ui/TiptapEditor.vue";
 import Select from "@/components/ui/Select.vue";
-import Textarea from "@/components/ui/Textarea.vue";
 import DatePicker from "@/components/ui/DatePicker.vue";
 import PrioritySelect from "@/components/issue/PrioritySelect.vue";
 import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
@@ -37,7 +35,6 @@ const sprints = ref<Sprint[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 const newComment = ref("");
-const editingDescription = ref(false);
 
 type Draft = {
 	title: string;
@@ -167,7 +164,6 @@ async function save() {
 		);
 		issue.value = { ...updated, key: issue.value.key };
 		initDraft();
-		editingDescription.value = false;
 		emit("updated", issue.value);
 		notify("Issue saved", "success");
 	} catch (err) {
@@ -179,7 +175,6 @@ async function save() {
 
 function discard() {
 	initDraft();
-	editingDescription.value = false;
 }
 
 async function submitComment() {
@@ -437,36 +432,14 @@ async function removeLink(linkId: string) {
 					</div>
 
 					<div>
-						<div class="flex items-center justify-between mb-2">
-							<h3 class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
-								Description
-							</h3>
-							<button
-								class="p-1 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel-hover)]"
-								:title="editingDescription ? 'Preview' : 'Edit'"
-								@click="editingDescription = !editingDescription"
-							>
-								<component
-									:is="editingDescription ? Eye : Edit3"
-									class="h-3.5 w-3.5"
-								/>
-							</button>
-						</div>
-						<Textarea
-							v-if="editingDescription || !draft.description"
+						<h3 class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)] mb-2">
+							Description
+						</h3>
+						<TiptapEditor
 							v-model="draft.description"
-							:rows="8"
-							placeholder="Markdown supported. **bold**, `code`, - lists, @mentions…"
-							class="mono"
-							@change="editingDescription = false"
+							:members="members"
+							placeholder="Add a description… @mention teammates"
 						/>
-						<div
-							v-else
-							class="card p-3 cursor-text"
-							@click="editingDescription = true"
-						>
-							<Markdown :source="draft.description" />
-						</div>
 					</div>
 
 					<div>
@@ -487,7 +460,7 @@ async function removeLink(linkId: string) {
 										<span>·</span>
 										<span>{{ timeAgo(c.createdAt) }}</span>
 									</div>
-									<Markdown :source="c.body" class="mt-1" />
+									<TiptapEditor :model-value="c.body" :readonly="true" class="mt-1" />
 								</div>
 							</li>
 						</ul>
@@ -495,12 +468,10 @@ async function removeLink(linkId: string) {
 				</div>
 
 				<footer v-if="issue" class="border-t border-[var(--color-border)] p-4">
-					<MentionTextarea
+					<TiptapEditor
 						v-model="newComment"
 						:members="members"
-						placeholder="Add a comment · @mention teammates · **markdown** supported"
-						:rows="2"
-						:previewable="true"
+						placeholder="Add a comment · @mention teammates"
 					/>
 					<div class="flex justify-end mt-2">
 						<Button variant="primary" size="sm" @click="submitComment" :disabled="!newComment.trim()">
