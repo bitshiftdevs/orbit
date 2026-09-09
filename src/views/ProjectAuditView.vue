@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, onMounted, ref, type Ref } from "vue";
+import { inject, onMounted, ref, watch, type Ref } from "vue";
 import { RefreshCw } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import Badge from "@/components/ui/Badge.vue";
@@ -28,6 +28,7 @@ async function load(force = false) {
 }
 
 onMounted(load);
+watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load(); });
 
 function toneFor(action: string) {
 	if (action.startsWith("secret") || action.startsWith("envvar")) return "amber";

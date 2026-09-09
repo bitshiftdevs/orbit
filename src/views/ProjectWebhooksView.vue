@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, onMounted, ref, type Ref } from "vue";
+import { inject, onMounted, ref, watch, type Ref } from "vue";
 import { Copy, ExternalLink, Plus, Radio, RefreshCw, Trash2, Webhook as WebhookIcon } from "lucide-vue-next";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
@@ -63,6 +63,7 @@ async function load(force = false) {
 }
 
 onMounted(load);
+watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load(); });
 
 async function create() {
 	if (!project.value) return;

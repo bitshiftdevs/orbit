@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, type Ref } from "vue";
+import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { Bookmark, ListChecks, Plus, RefreshCw, X } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import Button from "@/components/ui/Button.vue";
@@ -102,6 +102,7 @@ async function loadMore() {
 }
 
 onMounted(load);
+watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load(); });
 
 useShortcuts({
 	c: () => (newDialog.value = true),

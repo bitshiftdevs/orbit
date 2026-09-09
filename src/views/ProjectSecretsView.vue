@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, type Ref } from "vue";
+import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { Copy, Download, Eye, EyeOff, Plus, RefreshCw, Trash2 } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
@@ -50,6 +50,7 @@ async function load(force = false) {
 }
 
 onMounted(load);
+watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load(); });
 
 async function reveal(secret: Secret) {
 	if (revealed.value[secret.id]) {

@@ -51,6 +51,7 @@ async function load(force = false) {
 }
 
 onMounted(load);
+watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load(); });
 
 const route = useRoute();
 const router = useRouter();

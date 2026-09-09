@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, onMounted, ref, type Ref } from "vue";
+import { inject, onMounted, ref, watch, type Ref } from "vue";
 import { Download, Eye, File as FileIcon, RefreshCw, Trash2, Upload } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
 import FilePreview from "@/components/files/FilePreview.vue";
@@ -38,6 +38,7 @@ async function load(force = false) {
 }
 
 onMounted(load);
+watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load(); });
 
 async function upload(list: FileList | null) {
 	if (!list || !project.value) return;
