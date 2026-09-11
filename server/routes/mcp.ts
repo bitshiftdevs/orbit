@@ -13,16 +13,15 @@ app.all("/", async (c) => {
 	});
 	const server = buildServer(c.get("user"));
 	await server.connect(transport);
-	const response = await transport.handleRequest(c.req.raw);
 
-	if (!response.body) {
-		await server.close();
-		return response;
-	}
+	// Strip SSE from Accept to force a single JSON response per call — no long-lived streams
+	const headers = new Headers(c.req.raw.headers);
+	headers.set("accept", "application/json, */*;q=0.1");
+	const req = new Request(c.req.raw, { headers });
 
-	const { readable, writable } = new TransformStream();
-	response.body.pipeTo(writable).finally(() => server.close());
-	return new Response(readable, response);
+	const response = await transport.handleRequest(req);
+	await server.close();
+	return response;
 });
 
 export default app;

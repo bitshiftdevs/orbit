@@ -10,8 +10,9 @@ export function getDb() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   cachedSql = postgres(url, {
-    max: 5,
-    idle_timeout: 30,
+    max: 1,
+    idle_timeout: 5,
+    connect_timeout: 10,
     prepare: false,
     ...(process.env.NODE_ENV === "production"
       ? { ssl: { rejectUnauthorized: false } }

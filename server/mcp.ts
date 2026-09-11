@@ -9,7 +9,7 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { buildStdioServer } from "./mcp/stdio/index";
 
-const BASE_URL = (process.env.ORBIT_BASE_URL ?? "http://localhost:8888").replace(/\/$/, "");
+const BASE_URL = (process.env.ORBIT_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 const TOKEN = process.env.ORBIT_API_TOKEN ?? "";
 
 if (!TOKEN) {
