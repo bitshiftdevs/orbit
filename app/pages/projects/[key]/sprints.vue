@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ name: "project-sprints" });
 import { inject, onMounted, ref, watch, type Ref } from "vue";
 import { BarChart3, Play, Plus, Check, RefreshCw, TrendingUp } from "lucide-vue-next";
 import Badge from "~/components/ui/Badge.vue";

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ name: "project-secrets" });
 import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { Copy, Download, Eye, EyeOff, Plus, RefreshCw, Trash2 } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";

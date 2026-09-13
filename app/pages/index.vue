@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ name: "dashboard" });
 import { onMounted, ref } from "vue";
 import { RefreshCw, Sparkles } from "lucide-vue-next";
 import Badge from "~/components/ui/Badge.vue";

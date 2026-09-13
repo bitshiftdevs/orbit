@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ name: "project-backlog" });
 import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { navigateTo } from "nuxt/app";
 import { Bookmark, ListChecks, Plus, RefreshCw, X } from "lucide-vue-next";

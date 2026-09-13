@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ name: "project-webhooks" });
 import { inject, onMounted, ref, watch, type Ref } from "vue";
 import { Copy, ExternalLink, Plus, Radio, RefreshCw, Trash2, Webhook as WebhookIcon } from "lucide-vue-next";
 import Badge from "~/components/ui/Badge.vue";

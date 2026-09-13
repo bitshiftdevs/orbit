@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ name: "project-audit" });
 import { inject, onMounted, ref, watch, type Ref } from "vue";
 import { RefreshCw } from "lucide-vue-next";
 import Avatar from "~/components/ui/Avatar.vue";

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ name: "project-files" });
 import { inject, onMounted, ref, watch, type Ref } from "vue";
 import { Download, Eye, File as FileIcon, RefreshCw, Trash2, Upload } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";

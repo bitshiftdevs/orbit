@@ -2,6 +2,7 @@ import z from "zod";
 import { getDb } from "~~/server/db/client";
 import { User, sprints } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
+import { requireAuth } from "~~/server/middleware/auth";
 
 const schema = z.object({
   name: z.string().min(1).max(120),
