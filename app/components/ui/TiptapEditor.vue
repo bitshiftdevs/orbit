@@ -38,6 +38,8 @@ type Member = {
 	accentColor?: string | null;
 };
 
+defineOptions({ inheritAttrs: false });
+
 const props = withDefaults(defineProps<{
 	modelValue: string | null;
 	members?: Member[];
@@ -292,7 +294,7 @@ function applyImage() {
 </script>
 
 <template>
-	<div :class="['tiptap-wrap', { 'tiptap-editable': !readonly }]">
+	<div v-bind="$attrs" :class="['tiptap-wrap', { 'tiptap-editable': !readonly }]">
 		<!-- Main toolbar -->
 		<div v-if="!readonly" class="tiptap-toolbar">
 			<button type="button" title="Undo" :disabled="!editor?.can().undo()" @click="editor?.chain().focus().undo().run()">
