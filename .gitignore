@@ -43,3 +43,5 @@ coverage
 # Nuxt
 .nuxt
 .output
+.vercel/output/static/_nuxt
+.vercel/output

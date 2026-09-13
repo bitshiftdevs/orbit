@@ -70,10 +70,12 @@ export default defineNuxtConfig({
   },
   nitro: {
     preset: "vercel",
-    externals: { external: ["@node-rs/argon2"] },
-    rollupConfig: {
-      external: ["@node-rs/argon2"],
-    },
+    // NOTE: do not mark @node-rs/argon2 as `external` here. Nitro's
+    // node-externals plugin already externalizes it (Rollup can't bundle the
+    // native .node binary) AND traces its literal require() calls into the
+    // platform-binary packages (@node-rs/argon2-linux-x64-{gnu,musl}) so they
+    // are copied into the Vercel function bundle. Forcing it external via
+    // rollupConfig bypasses that tracing → ERR_MODULE_NOT_FOUND at runtime.
   },
 
   compatibilityDate: "2025-11-30",
