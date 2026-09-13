@@ -6,6 +6,8 @@ import { notifyError } from "~/lib/notify";
 import { useSession } from "~/stores/session";
 import { useRoute, navigateTo } from "nuxt/app";
 
+definePageMeta({ layout: false });
+
 const email = ref("");
 const password = ref("");
 const loading = ref(false);

@@ -72,8 +72,8 @@ onMounted(load);
 			</div>
 		</header>
 
-		<div class="p-8 grid gap-8 xl:grid-cols-3">
-			<section class="xl:col-span-2">
+		<div class="p-8 grid gap-8 grid-cols-[1fr_260px]">
+			<section>
 				<h2 class="text-xs uppercase tracking-widest text-[var(--color-fg-subtle)] font-semibold mb-3">
 					My work
 				</h2>

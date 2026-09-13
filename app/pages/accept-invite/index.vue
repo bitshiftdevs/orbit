@@ -6,6 +6,8 @@ import { notifyError } from "~/lib/notify";
 import { useSession } from "~/stores/session";
 import { useRoute, navigateTo } from "nuxt/app";
 
+definePageMeta({ layout: false });
+
 const route = useRoute();
 const session = useSession();
 
