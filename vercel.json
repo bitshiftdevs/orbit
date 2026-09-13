@@ -1,11 +1,4 @@
 {
-	"installCommand": "bun install",
-	"buildCommand": "bun run db:migrate && nuxt build",
-	"devCommand": "nuxt dev",
-	"outputDirectory": ".output/public",
-	"functions": {
-		".output/server/index.mjs": {
-			"includeFiles": "node_modules/@node-rs/**"
-		}
-	}, "routes": [{ "src": "/(.*)", "dest": "/_nuxt/server" }]
+  "installCommand": "bun install",
+  "buildCommand": "bun run db:migrate && nuxt build"
 }

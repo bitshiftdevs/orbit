@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 import { AtSign, Bell, MessageSquare, UserCheck } from "lucide-vue-next";
 import Avatar from "~/components/ui/Avatar.vue";
 import { useNotifications } from "~/stores/notifications";

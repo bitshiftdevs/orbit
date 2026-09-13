@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 import {
 	FolderKanban,
 	KeyRound,
