@@ -1,11 +1,10 @@
-import { and, eq, innerJoin, select } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { projects, projectMembers, users } from "../../db/schema";
 import { loadProject } from "../../lib/access";
 import { assertMember } from "../../lib/access";
 import { requireAuth } from "../../middleware/auth";
 import type { User } from "../../db/schema";
-import { H3Event } from "h3";
 
 export default defineEventHandler(async (event) => {
 	await requireAuth(event);
@@ -26,9 +25,12 @@ export default defineEventHandler(async (event) => {
 			role: users.role,
 			joinedAt: projectMembers.joinedAt,
 		})
-		.from(projectMembers)
-		.innerJoin(users, eq(users.id, projectMembers.userId))
-		.where(eq(projectMembers.projectId, project.id));
+		.from(users)
+		.leftJoin(
+			projectMembers,
+			and(eq(projectMembers.userId, users.id), eq(projectMembers.projectId, project.id)),
+		)
+		.orderBy(users.name);
 
 	return { project, members };
 });
