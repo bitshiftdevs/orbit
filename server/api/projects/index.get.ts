@@ -1,4 +1,4 @@
-import { and, desc, eq, innerJoin, select, from } from "drizzle-orm";
+import { and, desc, eq, innerJoin } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { projects, projectMembers } from "../../db/schema";
 import { requireAuth } from "../../middleware/auth";

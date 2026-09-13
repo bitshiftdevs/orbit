@@ -1,4 +1,4 @@
-import { eq, select, from, delete } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { issues } from "../../db/schema";
 import { assertMember } from "../../lib/access";

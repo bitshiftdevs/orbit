@@ -8,6 +8,7 @@
     "dev": "nuxt dev",
     "build": "nuxt build",
     "preview": "nuxt preview",
+    "prepare": "nuxt prepare",
     "type-check": "nuxt typecheck",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run server/db/migrate.ts",
@@ -44,7 +45,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.36.4",
-
     "lowlight": "^3.3.0",
     "lucide-vue-next": "^0.525.0",
     "nanoid": "^5.0.9",
@@ -63,7 +63,6 @@
     "zod": "^4.0.5"
   },
   "devDependencies": {
-    
     "@tsconfig/node22": "^22.0.2",
     "@types/bun": "^1.1.14",
     "@types/node": "^22.15.32",
