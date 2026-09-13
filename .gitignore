@@ -39,3 +39,7 @@ coverage
 
 # nix
 .direnv
+
+# Nuxt
+.nuxt
+.output
