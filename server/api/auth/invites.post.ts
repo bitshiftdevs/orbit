@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
 		})
 		.returning();
 
-	const url = `${process.env.APP_URL ?? "http://localhost:3000"}/accept-invite/${token}`;
+	const url = `${process.env.APP_URL ?? "http://orbit.local:3000"}/accept-invite/${token}`;
 
 	return { invite: inv, url };
 });

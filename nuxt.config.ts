@@ -35,6 +35,9 @@ export default defineNuxtConfig({
   css: ["~/assets/main.css", "vue-sonner/style.css"],
 
   vite: {
+    server: {
+      allowedHosts: ["orbit.local"],
+    },
     plugins: [tailwindcss()],
     optimizeDeps: {
       include: [
