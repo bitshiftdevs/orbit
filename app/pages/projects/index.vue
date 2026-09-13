@@ -5,6 +5,7 @@ import Badge from "~/components/ui/Badge.vue";
 import Button from "~/components/ui/Button.vue";
 import Dialog from "~/components/ui/Dialog.vue";
 import Input from "~/components/ui/Input.vue";
+import Skeleton from "~/components/ui/Skeleton.vue";
 import Textarea from "~/components/ui/Textarea.vue";
 import { notify, notifyError } from "~/lib/notify";
 import { useProjects } from "~/stores/projects";
@@ -79,6 +80,22 @@ async function submit() {
 
 		<div class="p-8">
 			<div class="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+				<template v-if="projects.loading && !projects.items.length">
+					<div v-for="n in 6" :key="`sk-${n}`" class="card p-5 flex flex-col gap-3">
+						<div class="flex items-start justify-between">
+							<Skeleton width="h-10 w-10" height="h-10" class="rounded-md" />
+						</div>
+						<div class="space-y-2">
+							<Skeleton width="w-12" height="h-2.5" />
+							<Skeleton width="w-32" height="h-4" />
+							<Skeleton :lines="2" height="h-2.5" />
+						</div>
+						<div class="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
+							<Skeleton width="w-16" height="h-2.5" />
+							<Skeleton width="w-20" height="h-2.5" />
+						</div>
+					</div>
+				</template>
 				<NuxtLink
 					v-for="p in projects.items"
 					:key="p.id"
@@ -120,7 +137,7 @@ async function submit() {
 				</NuxtLink>
 
 				<button
-				v-if="canCreate() && !projects.items.length"
+				v-if="canCreate() && !projects.loading && !projects.items.length"
 				class="card card-hover p-5 border-dashed flex flex-col items-center justify-center text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] py-16"
 				@click="dialogOpen = true"
 			>

@@ -2,6 +2,7 @@
 import { ref, watch } from "vue";
 import { Download, Edit3, Eye, X } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
+import Spinner from "~/components/ui/Spinner.vue";
 import TiptapEditor from "~/components/ui/TiptapEditor.vue";
 import type { FileRow } from "~/types/domain";
 import { notify, notifyError } from "~/lib/notify";
@@ -165,7 +166,7 @@ function download(f: FileRow) {
 				</header>
 
 				<div class="flex-1 overflow-auto flex items-center justify-center p-6" @click.self="close">
-					<div v-if="previewLoading" class="text-white/50 text-sm">Loading…</div>
+					<Spinner v-if="previewLoading" size="lg" label="Loading…" class="text-white/70" />
 
 					<template v-else-if="previewBlobUrl">
 						<img

@@ -8,6 +8,7 @@ import Button from "~/components/ui/Button.vue";
 import Input from "~/components/ui/Input.vue";
 import TiptapEditor from "~/components/ui/TiptapEditor.vue";
 import Select from "~/components/ui/Select.vue";
+import Spinner from "~/components/ui/Spinner.vue";
 import DatePicker from "~/components/ui/DatePicker.vue";
 import PrioritySelect from "~/components/issue/PrioritySelect.vue";
 import AssigneeSelect from "~/components/issue/AssigneeSelect.vue";
@@ -300,8 +301,8 @@ async function removeLink(linkId: string) {
 					</div>
 				</header>
 
-				<div v-if="loading || !issue || !draft" class="flex-1 flex items-center justify-center text-sm text-[var(--color-fg-subtle)]">
-					loading…
+				<div v-if="loading || !issue || !draft" class="flex-1 flex items-center justify-center">
+					<Spinner size="lg" label="Loading issue…" />
 				</div>
 
 				<div v-else class="flex-1 overflow-y-auto p-5 space-y-5">

@@ -10,6 +10,7 @@ import Dialog from "~/components/ui/Dialog.vue";
 import Input from "~/components/ui/Input.vue";
 import Textarea from "~/components/ui/Textarea.vue";
 import DatePicker from "~/components/ui/DatePicker.vue";
+import Spinner from "~/components/ui/Spinner.vue";
 import { api } from "~/lib/api";
 import type { CycleTimeEntry, Project, Sprint, SprintBurndown, SprintVelocity } from "~/types/domain";
 import { notify, notifyError } from "~/lib/notify";
@@ -207,9 +208,7 @@ async function toggleBurndown(s: Sprint) {
 					</div>
 				</div>
 				<div v-if="openSprintId === s.id" class="mt-4">
-					<div v-if="burndownLoading" class="text-xs text-[var(--color-fg-subtle)]">
-						loading burndown…
-					</div>
+					<Spinner v-if="burndownLoading" size="sm" label="Loading burndown…" class="text-xs" />
 					<BurndownChart
 						v-else-if="burndown"
 						:days="burndown.days"

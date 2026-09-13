@@ -3,6 +3,7 @@ definePageMeta({ name: "project-files" });
 import { inject, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { Download, Eye, File as FileIcon, RefreshCw, Trash2, Upload } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
+import Skeleton from "~/components/ui/Skeleton.vue";
 import FilePreview from "~/components/files/FilePreview.vue";
 import { api } from "~/lib/api";
 import type { FileRow, Project } from "~/types/domain";
@@ -19,6 +20,7 @@ const dragOver = ref(false);
 const inputRef = ref<HTMLInputElement | null>(null);
 const previewing = ref<FileRow | null>(null);
 const refreshing = ref(false);
+const initialLoading = ref(true);
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -50,6 +52,7 @@ async function load(force = false) {
 		notifyError(err);
 	} finally {
 		refreshing.value = false;
+		initialLoading.value = false;
 	}
 }
 
@@ -155,6 +158,18 @@ function onFileSaved(updated: FileRow) {
 			</div>
 
 			<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+				<template v-if="initialLoading">
+					<div v-for="n in 6" :key="`sk-${n}`" class="card overflow-hidden flex flex-col">
+						<Skeleton width="w-full" height="h-36" class="rounded-none" />
+						<div class="p-3 flex items-center gap-3">
+							<div class="min-w-0 flex-1 space-y-1.5">
+								<Skeleton width="w-32" height="h-3.5" />
+								<Skeleton width="w-24" height="h-2.5" />
+							</div>
+							<Skeleton width="h-7 w-7" height="h-7" />
+						</div>
+					</div>
+				</template>
 				<div
 					v-for="f in files"
 					:key="f.id"

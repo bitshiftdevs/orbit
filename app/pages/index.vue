@@ -3,6 +3,7 @@ definePageMeta({ name: "dashboard" });
 import { onMounted, ref } from "vue";
 import { RefreshCw, Sparkles } from "lucide-vue-next";
 import Badge from "~/components/ui/Badge.vue";
+import Skeleton from "~/components/ui/Skeleton.vue";
 import { api, type Issue } from "~/lib/api";
 import { STATUS_META } from "~/components/issue/meta";
 import { useSession } from "~/stores/session";
@@ -94,6 +95,18 @@ onMounted(load);
           My work
         </h2>
         <div class="card divide-y divide-[var(--color-border)]">
+          <template v-if="loading">
+            <div
+              v-for="n in 4"
+              :key="`sk-${n}`"
+              class="flex items-center gap-3 px-4 py-3"
+            >
+              <Skeleton circle width="h-4 w-4" height="h-4" />
+              <Skeleton width="w-16" height="h-3" />
+              <Skeleton width="flex-1" height="h-3.5" />
+              <Skeleton width="w-14" height="h-4" />
+            </div>
+          </template>
           <router-link
             v-for="i in mine"
             :key="i.id"
@@ -139,6 +152,15 @@ onMounted(load);
           Projects
         </h2>
         <div class="space-y-2">
+          <template v-if="projectStore.loading && !projectStore.items.length">
+            <div v-for="n in 3" :key="`psk-${n}`" class="card p-3 flex items-center gap-3">
+              <Skeleton circle width="h-8 w-8" height="h-8" />
+              <div class="flex-1 space-y-1.5">
+                <Skeleton width="w-32" height="h-3.5" />
+                <Skeleton width="w-20" height="h-2.5" />
+              </div>
+            </div>
+          </template>
           <router-link
             v-for="p in projectStore.items"
             :key="p.id"
@@ -165,7 +187,7 @@ onMounted(load);
             </Badge>
           </router-link>
           <router-link
-            v-if="!projectStore.items.length"
+            v-if="!projectStore.loading && !projectStore.items.length"
             :to="{ name: 'projects' }"
             class="card p-4 text-center text-sm text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]"
           >

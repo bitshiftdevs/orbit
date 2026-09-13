@@ -7,6 +7,8 @@ import Avatar from "~/components/ui/Avatar.vue";
 import Button from "~/components/ui/Button.vue";
 import Dialog from "~/components/ui/Dialog.vue";
 import Input from "~/components/ui/Input.vue";
+import Skeleton from "~/components/ui/Skeleton.vue";
+import Spinner from "~/components/ui/Spinner.vue";
 import BulkEditDialog from "~/components/issue/BulkEditDialog.vue";
 import IssueDrawer from "~/components/issue/IssueDrawer.vue";
 import NewIssueDialog from "~/components/issue/NewIssueDialog.vue";
@@ -57,6 +59,7 @@ const selected = ref<Set<string>>(new Set());
 const bulkOpen = ref(false);
 
 const refreshing = ref(false);
+const initialLoading = ref(true);
 
 async function load(force = false) {
 	if (!project.value) return;
@@ -80,6 +83,7 @@ async function load(force = false) {
 		notifyError(err);
 	} finally {
 		refreshing.value = false;
+		initialLoading.value = false;
 	}
 }
 
@@ -325,6 +329,19 @@ async function applyBulk(patch: BulkIssuePatch) {
 					<span class="flex-1">Title</span>
 					<span class="w-24 text-right">Assignee</span>
 				</div>
+				<template v-if="initialLoading">
+					<div
+						v-for="n in 8"
+						:key="`sk-${n}`"
+						class="flex items-center gap-3 px-4 py-2.5"
+					>
+						<Skeleton width="w-4" height="h-4" />
+						<Skeleton circle width="h-3.5 w-3.5" height="h-3.5" />
+						<Skeleton width="w-16" height="h-3" />
+						<Skeleton width="flex-1" height="h-3.5" />
+						<Skeleton circle width="h-5 w-5" height="h-5" />
+					</div>
+				</template>
 				<div
 					v-for="i in filtered"
 					:key="i.id"
@@ -380,17 +397,18 @@ async function applyBulk(patch: BulkIssuePatch) {
 					<div v-else class="h-5 w-5 rounded-full border border-dashed border-[var(--color-border-strong)]" />
 				</div>
 				<div
-					v-if="!filtered.length"
+					v-if="!initialLoading && !filtered.length"
 					class="py-12 text-center text-sm text-[var(--color-fg-subtle)]"
 				>
 					no matches. try clearing filters, or press <kbd class="mono px-1">c</kbd> to create.
 				</div>
 				<div v-if="issueOffset < issueTotal" class="px-4 py-3 border-t border-[var(--color-border)]">
 					<button
-						class="text-xs text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] disabled:opacity-40"
+						class="text-xs text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] disabled:opacity-40 inline-flex items-center gap-2"
 						:disabled="loadingMore"
 						@click="loadMore"
 					>
+						<Spinner v-if="loadingMore" size="xs" />
 						{{ loadingMore ? "loading…" : `load more (${issueTotal - issueOffset} remaining)` }}
 					</button>
 				</div>

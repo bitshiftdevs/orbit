@@ -4,9 +4,11 @@ import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { useRoute, navigateTo } from "nuxt/app";
 import { Plus, RefreshCw } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
+import Skeleton from "~/components/ui/Skeleton.vue";
 import IssueDrawer from "~/components/issue/IssueDrawer.vue";
 import KanbanBoard from "~/components/issue/KanbanBoard.vue";
 import NewIssueDialog from "~/components/issue/NewIssueDialog.vue";
+import { BOARD_STATUSES, STATUS_META } from "~/components/issue/meta";
 import { useShortcuts } from "~/composables/useShortcuts";
 import { api, type Issue, type IssueStatus, type Project, type SessionUser, type Sprint } from "~/lib/api";
 import { notifyError } from "~/lib/notify";
@@ -34,6 +36,7 @@ const boardIssues = computed(() => {
 const newDialog = ref(false);
 const newStatus = ref<IssueStatus>("todo");
 const refreshing = ref(false);
+const initialLoading = ref(true);
 
 async function load(force = false) {
 	if (!project.value) return;
@@ -49,6 +52,7 @@ async function load(force = false) {
 		notifyError(err);
 	} finally {
 		refreshing.value = false;
+		initialLoading.value = false;
 	}
 }
 
@@ -131,7 +135,40 @@ function newIn(status: IssueStatus) {
 			</div>
 		</div>
 		<div v-if="project" class="flex-1 overflow-hidden px-8 py-4">
+			<div v-if="initialLoading" class="flex gap-3 overflow-x-auto pb-2 h-full">
+				<section
+					v-for="status in BOARD_STATUSES"
+					:key="status"
+					class="w-72 shrink-0 flex flex-col rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)]/60"
+				>
+					<div class="flex items-center gap-2 px-3 py-2.5 border-b border-[var(--color-border)]">
+						<component
+							:is="STATUS_META[status].icon"
+							class="h-3.5 w-3.5"
+							:class="STATUS_META[status].text"
+						/>
+						<span class="text-xs font-medium text-[var(--color-fg-muted)]">
+							{{ STATUS_META[status].label }}
+						</span>
+					</div>
+					<div class="flex-1 p-2 space-y-2">
+						<div
+							v-for="n in 3"
+							:key="n"
+							class="card p-3 space-y-2.5"
+						>
+							<Skeleton width="w-20" height="h-2.5" />
+							<Skeleton :lines="2" height="h-3" />
+							<div class="flex items-center gap-2 pt-1">
+								<Skeleton circle width="h-5 w-5" height="h-5" />
+								<Skeleton width="w-12" height="h-2.5" />
+							</div>
+						</div>
+					</div>
+				</section>
+			</div>
 			<KanbanBoard
+				v-else
 				:issues="boardIssues"
 				:project-key="project.key"
 				@open="(id) => (selectedIssueId = id)"
