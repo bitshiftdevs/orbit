@@ -10,10 +10,10 @@ if (import.meta.client && session.loading) {
 </script>
 
 <template>
-  <UApp>
+  <div>
     <Toaster theme="dark" rich-colors position="bottom-right" class="pointer-events-auto" />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
-  </UApp>
+  </div>
 </template>

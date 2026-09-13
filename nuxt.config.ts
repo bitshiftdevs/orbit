@@ -1,7 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
-  modules: ["@vueuse/nuxt"],
+  modules: ["@pinia/nuxt", "@vueuse/nuxt"],
   devtools: { enabled: true },
   ssr: false,
 
@@ -36,6 +36,16 @@ export default defineNuxtConfig({
 
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: [
+        "@vue/devtools-core",
+        "@vue/devtools-kit",
+        "vue-sonner",
+        "clsx",
+        "lucide-vue-next",
+        "tailwind-merge",
+      ],
+    },
   },
   nitro: {
     preset: "vercel",
