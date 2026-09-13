@@ -4,8 +4,6 @@ import {
 	ilike,
 	or,
 	sql,
-	select,
-	from,
 	innerJoin,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";

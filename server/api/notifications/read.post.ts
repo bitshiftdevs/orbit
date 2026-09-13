@@ -2,7 +2,6 @@ import {
 	and,
 	eq,
 	inArray,
-	update,
 } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../../db/client";

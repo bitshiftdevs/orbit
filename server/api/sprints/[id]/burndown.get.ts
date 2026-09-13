@@ -1,8 +1,6 @@
 import {
 	and,
 	eq,
-	select,
-	from,
 } from "drizzle-orm";
 import { getDb } from "../../../db/client";
 import { issues, sprints } from "../../../db/schema";

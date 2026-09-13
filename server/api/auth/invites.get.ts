@@ -3,8 +3,6 @@ import {
 	desc,
 	eq,
 	gt,
-	select,
-	from,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { invites } from "../../db/schema";

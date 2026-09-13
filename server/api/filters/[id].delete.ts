@@ -1,9 +1,6 @@
 import {
 	and,
 	eq,
-	select,
-	from,
-	delete,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { savedFilters } from "../../db/schema";

@@ -1,8 +1,5 @@
 import {
 	eq,
-	select,
-	from,
-	delete,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { files } from "../../db/schema";

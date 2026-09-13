@@ -1,12 +1,11 @@
-import type { Context } from "hono";
-import { getDb } from "@server/db/client";
-import { auditLog } from "@server/db/schema";
-import type { AppEnv } from "@server/types";
-
+import type { H3Event } from "h3";
+import { getHeader } from "h3";
+import { getDb } from "../db/client";
+import { auditLog, User } from "../db/schema";
 type Action = (typeof auditLog.action.enumValues)[number];
 
 export async function audit(
-  c: Context<AppEnv>,
+  event: H3Event,
   params: {
     action: Action;
     projectId?: string | null;
@@ -15,10 +14,10 @@ export async function audit(
     meta?: Record<string, unknown> | null;
   },
 ) {
-  const user = c.get("user");
+  const user = event.context.user as User | undefined;
   const ip =
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-    c.req.header("x-real-ip") ??
+    getHeader(event, "x-forwarded-for")?.split(",")[0]?.trim() ??
+    getHeader(event, "x-real-ip") ??
     null;
   await getDb()
     .insert(auditLog)

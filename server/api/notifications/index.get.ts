@@ -4,8 +4,6 @@ import {
 	desc,
 	eq,
 	leftJoin,
-	select,
-	from,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { notifications, users } from "../../db/schema";

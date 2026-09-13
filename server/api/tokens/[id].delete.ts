@@ -1,9 +1,6 @@
 import {
 	and,
 	eq,
-	select,
-	from,
-	update,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { apiTokens } from "../../db/schema";

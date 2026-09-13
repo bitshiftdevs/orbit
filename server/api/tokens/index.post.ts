@@ -1,9 +1,6 @@
 import {
 	desc,
 	eq,
-	select,
-	from,
-	insert,
 } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../../db/client";

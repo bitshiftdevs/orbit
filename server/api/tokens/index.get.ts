@@ -1,8 +1,6 @@
 import {
 	desc,
 	eq,
-	select,
-	from,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { apiTokens } from "../../db/schema";

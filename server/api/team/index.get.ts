@@ -1,7 +1,5 @@
 import {
 	asc,
-	select,
-	from,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { users } from "../../db/schema";

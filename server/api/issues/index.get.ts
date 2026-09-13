@@ -5,8 +5,6 @@ import {
 	desc,
 	eq,
 	inArray,
-	select,
-	from,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import {

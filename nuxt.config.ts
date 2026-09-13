@@ -1,3 +1,5 @@
+import tailwindcss from "@tailwindcss/vite";
+
 export default defineNuxtConfig({
   modules: ["@nuxt/devtools", "@vueuse/nuxt"],
   ssr: false,
@@ -30,25 +32,17 @@ export default defineNuxtConfig({
   },
 
   css: ["~/assets/main.css", "vue-sonner/style.css"],
-  postcss: {
-    plugins: [],
-  },
-  compatibilityDate: "2025-11-30",
-  treeShake: {
-    aliases: {
-      vue: "vue/dist/vue.mjs",
-      "vue-router": "vue-router/dist/vue-router.mjs",
-      pinia: "pinia/dist/pinia.mjs",
-    },
+
+  vite: {
+    plugins: [tailwindcss()],
   },
   nitro: {
     preset: "vercel",
-    externals: [{ handler: "unhandled", entries: ["@node-rs/argon2"] }],
+    externals: { external: ["@node-rs/argon2"] },
     rollupConfig: {
       external: ["@node-rs/argon2"],
     },
   },
-  appConfig: {
-    apiBase: "/api",
-  },
+
+  compatibilityDate: "2025-11-30",
 });

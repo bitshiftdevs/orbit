@@ -1,27 +1,23 @@
-import { and, eq, delete } from "drizzle-orm";
-import { getDb } from "../../../db/client";
-import { projectMembers } from "../../../db/schema";
-import { loadProject } from "../../../lib/access";
-import { requireRole } from "../../../middleware/auth";
-import type { User } from "../../../db/schema";
-import type { H3Event } from "h3";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "~~/server/db/client";
+import { projectMembers, User } from "~~/server/db/schema";
+import { loadProject } from "~~/server/lib/access";
 
-export default defineEventHandler(
-	requireRole<User>("owner", "admin")(async (event) => {
-		const idOrKey = getRouterParam(event, "idOrKey");
-		const userId = getRouterParam(event, "userId");
-		const project = await loadProject(idOrKey);
-		const db = getDb();
+export default defineEventHandler(async (event) => {
+  requireRole("owner", "admin");
+  const idOrKey = getRouterParam(event, "idOrKey");
+  const userId = getRouterParam(event, "userId");
+  const project = await loadProject(idOrKey!);
+  const db = getDb();
 
-		await db
-			.delete(projectMembers)
-			.where(
-				and(
-					eq(projectMembers.projectId, project.id),
-					eq(projectMembers.userId, userId),
-				),
-			);
+  await db
+    .delete(projectMembers)
+    .where(
+      and(
+        eq(projectMembers.projectId, project.id),
+        eq(projectMembers.userId, userId),
+      ),
+    );
 
-		return { ok: true };
-	}),
-);
+  return { ok: true };
+});

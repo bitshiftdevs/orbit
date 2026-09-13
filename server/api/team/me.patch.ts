@@ -1,8 +1,5 @@
 import {
 	eq,
-	select,
-	from,
-	update,
 } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../../db/client";
