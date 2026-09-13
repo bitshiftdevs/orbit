@@ -54,6 +54,9 @@ html.light {
 @layer base {
 	html,
 	body,
+	/* #__nuxt is Nuxt's actual mount element — without height:100% here, every
+	   h-full layout below it collapses to content height. */
+	#__nuxt,
 	#app {
 		height: 100%;
 		background-color: var(--color-bg);

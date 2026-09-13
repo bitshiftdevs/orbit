@@ -10,7 +10,7 @@ if (import.meta.client && session.loading) {
 </script>
 
 <template>
-  <div>
+  <div class="h-full">
     <Toaster theme="dark" rich-colors position="bottom-right" class="pointer-events-auto" />
     <NuxtLayout>
       <NuxtPage />
