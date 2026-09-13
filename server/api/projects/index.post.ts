@@ -1,11 +1,9 @@
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../../db/client";
 import { projects, projectMembers } from "../../db/schema";
 import { requireRole } from "../../middleware/auth";
 import { audit } from "../../lib/audit";
 import type { User } from "../../db/schema";
-import type { H3Event } from "h3";
 
 const createSchema = z.object({
 	key: z
@@ -22,39 +20,35 @@ const createSchema = z.object({
 	memberIds: z.array(z.string().uuid()).default([]),
 });
 
-export default defineEventHandler(
-	requireRole<User>("owner", "admin")(async (event) => {
-		const body = await readValidatedBody(event, createSchema.parse);
-		const db = getDb();
-		const actor = event.context.user as User;
-		const [row] = await db
-			.insert(projects)
-			.values({
-				key: body.key,
-				name: body.name,
-				description: body.description,
-				color: body.color ?? "#3b82f6",
-				icon: body.icon ?? "rocket",
-				repoUrl: body.repoUrl || null,
-				productionUrl: body.productionUrl || null,
-				leadId: actor.id,
-			})
-			.returning();
+export default defineEventHandler(async (event) => {
+	await requireRole(event, "owner", "admin");
+	const body = await readValidatedBody(event, createSchema.parse);
+	const db = getDb();
+	const actor = event.context.user as User;
+	const [row] = await db
+		.insert(projects)
+		.values({
+			key: body.key,
+			name: body.name,
+			description: body.description,
+			color: body.color ?? "#3b82f6",
+			icon: body.icon ?? "rocket",
+			repoUrl: body.repoUrl || null,
+			productionUrl: body.productionUrl || null,
+			leadId: actor.id,
+		})
+		.returning();
 
-		const memberSet = new Set([actor.id, ...body.memberIds]);
-		await db.insert(projectMembers).values(
-			[...memberSet].map((userId) => ({
-				projectId: row.id,
-				userId,
-			})),
-		);
+	const memberSet = new Set([actor.id, ...body.memberIds]);
+	await db.insert(projectMembers).values(
+		[...memberSet].map((userId) => ({ projectId: row.id, userId })),
+	);
 
-		await audit(event, {
-			action: "project.create",
-			projectId: row.id,
-			targetName: row.key,
-		});
+	await audit(event, {
+		action: "project.create",
+		projectId: row.id,
+		targetName: row.key,
+	});
 
-		return { project: row };
-	}),
-);
+	return { project: row };
+});

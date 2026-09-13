@@ -4,6 +4,7 @@ import { secrets, User } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
 import { encryptSecret, lastFour } from "~~/server/lib/crypto";
+import { requireAuth } from "~~/server/middleware/auth";
 
 const secretSchema = z.object({
   name: z

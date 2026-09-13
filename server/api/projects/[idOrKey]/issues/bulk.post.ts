@@ -3,6 +3,7 @@ import z from "zod";
 import { getDb } from "~~/server/db/client";
 import { User, issues } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
+import { requireAuth } from "~~/server/middleware/auth";
 
 const bulkSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(200),

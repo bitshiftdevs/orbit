@@ -1,5 +1,9 @@
-// Login returns a short-lived bearer token + user.
-// No cookies are used anywhere. The token lives in memory on the client.
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+import { getDb } from "../../db/client";
+import { users, apiTokens } from "../../db/schema";
+import { verifyPassword } from "../../lib/auth";
+import { createApiTokenSecret, hashToken } from "../../middleware/auth";
 
 export const API_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 

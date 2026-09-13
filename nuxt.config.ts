@@ -1,7 +1,8 @@
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
-  modules: ["@nuxt/devtools", "@vueuse/nuxt"],
+  modules: ["@vueuse/nuxt"],
+  devtools: { enabled: true },
   ssr: false,
 
   runtimeConfig: {
