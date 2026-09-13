@@ -22,7 +22,7 @@ import mcp from "./routes/mcp";
 import type { AppEnv } from "./types";
 
 export function createApp() {
-	const app = new Hono<AppEnv>().basePath("/api");
+	const app = new Hono<AppEnv>();
 
 	app.get("/health", (c) =>
 		c.json({ ok: true, ts: new Date().toISOString() }),
@@ -36,9 +36,9 @@ export function createApp() {
 		const method = c.req.method;
 		const path = c.req.path;
 		const skip =
-			path.startsWith("/api/auth") ||
-			path.startsWith("/api/mcp") ||
-			path.startsWith("/api/notifications");
+			path.startsWith("/auth") ||
+			path.startsWith("/mcp") ||
+			path.startsWith("/notifications");
 		if (method === "GET" && !skip) {
 			c.header("Cache-Control", "max-age=30, stale-while-revalidate=60");
 		} else {

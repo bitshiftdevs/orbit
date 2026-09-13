@@ -1,5 +1,6 @@
 {
 	"installCommand": "bun install",
+	"devCommand": "bun run dev:vite",
 	"buildCommand": "bun run db:migrate && bun run build",
 	"outputDirectory": "dist",
 	"rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
