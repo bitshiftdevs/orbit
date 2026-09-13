@@ -57,6 +57,10 @@ async function request<T = unknown>(
     headers,
   });
   if (!res.ok) {
+    if (res.status === 401) {
+      clearCurrentAuth();
+      await navigateTo("/login");
+    }
     const err: ApiError = {
       status: res.status,
       message: `request failed (${res.status})`,
@@ -74,20 +78,28 @@ async function request<T = unknown>(
   return (await res.blob()) as unknown as T;
 }
 
+const TOKEN_KEY = "orbit_auth_token";
+
 let currentAuthToken: string | null = null;
-let currentUserPass: string | null = null;
 
 export function setCurrentAuthToken(token: string | null) {
   currentAuthToken = token;
+  if (import.meta.client) {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 export function getCurrentAuthToken(): string | null {
+  if (!currentAuthToken && import.meta.client) {
+    currentAuthToken = localStorage.getItem(TOKEN_KEY);
+  }
   return currentAuthToken;
 }
 
 export function clearCurrentAuth() {
   currentAuthToken = null;
-  currentUserPass = null;
+  if (import.meta.client) localStorage.removeItem(TOKEN_KEY);
 }
 
 export const api = {

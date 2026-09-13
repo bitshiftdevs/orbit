@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ name: "project-board" });
 import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { useRoute, navigateTo } from "nuxt/app";
 import { Plus, RefreshCw } from "lucide-vue-next";
@@ -53,7 +54,6 @@ async function load(force = false) {
 onMounted(load);
 watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load(); });
 
-const route = useRoute();
 const route = useRoute();
 
 // Sync ?issue=<id> query to drawer state so notification links & search open

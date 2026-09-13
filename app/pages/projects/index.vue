@@ -1,5 +1,4 @@
 <script setup lang="ts">
-<script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { Plus } from "lucide-vue-next";
 import Badge from "~/components/ui/Badge.vue";
@@ -118,7 +117,7 @@ async function submit() {
 						<span>{{ p.issueCounter }} issues</span>
 						<span>updated {{ timeAgo(p.updatedAt) }}</span>
 					</div>
-				</router-link>
+				</NuxtLink>
 
 				<button
 				v-if="canCreate() && !projects.items.length"
