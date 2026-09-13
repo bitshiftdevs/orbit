@@ -1,7 +1,6 @@
-import { secrets } from "bun";
 import { eq, desc } from "drizzle-orm";
 import { getDb } from "~~/server/db/client";
-import { User } from "~~/server/db/schema";
+import { secrets, User } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
 
 export default defineEventHandler(async (event) => {

@@ -1,7 +1,6 @@
-import { secrets } from "bun";
 import { eq } from "drizzle-orm";
 import { getDb } from "~~/server/db/client";
-import { User } from "~~/server/db/schema";
+import { secrets, User } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
 import { decryptSecret } from "~~/server/lib/crypto";

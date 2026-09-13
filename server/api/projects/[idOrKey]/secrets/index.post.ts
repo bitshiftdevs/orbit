@@ -1,7 +1,6 @@
-import { secrets } from "bun";
 import z from "zod";
 import { getDb } from "~~/server/db/client";
-import { User } from "~~/server/db/schema";
+import { secrets, User } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
 import { encryptSecret, lastFour } from "~~/server/lib/crypto";

@@ -3,7 +3,7 @@ import { getHeader } from "h3";
 import { getDb } from "../db/client";
 import { apiTokens, users } from "../db/schema";
 import { sha256Hex } from "../lib/crypto";
-import type { H3Event, createMiddleware } from "h3";
+import type { H3Event } from "h3";
 import type { User } from "../db/schema";
 
 export const API_TOKEN_PREFIX = "orb_";
@@ -48,21 +48,21 @@ export async function currentUser(event: H3Event) {
 	return null;
 }
 
-export const requireAuth = createMiddleware<User>(async (event) => {
+export async function requireAuth(event: H3Event): Promise<void> {
 	const user = await currentUser(event);
 	if (!user) throw createError({ statusCode: 401, statusMessage: "unauthenticated" });
 	event.context.user = user;
-});
+}
 
-export const requireRole = <T extends User>(
+export async function requireRole(
+	event: H3Event,
 	...roles: Array<"owner" | "admin" | "member">
-) =>
-	createMiddleware<T>(async (event) => {
-		const user = event.context.user as T | undefined;
-		if (!user || !roles.includes(user.role as any)) {
-			throw createError({ statusCode: 403, statusMessage: "forbidden" });
-		}
-	});
+): Promise<void> {
+	const user = event.context.user as User | undefined;
+	if (!user || !roles.includes(user.role as any)) {
+		throw createError({ statusCode: 403, statusMessage: "forbidden" });
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Small helpers reused by server routes and server utilities.
@@ -92,6 +92,10 @@ export function createApiTokenSecret(): string {
 }
 
 // Convenience wrappers for server utilities that already have a user in scope.
+
+export default defineEventHandler(async (event) => {
+	event.context.user = await currentUser(event);
+});
 
 export type AuthContext = { user: User };
 

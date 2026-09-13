@@ -1,6 +1,4 @@
-import { sql } from "bun";
-import { count } from "console";
-import { eq } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import { getDb } from "~~/server/db/client";
 import { User, sprints, issues } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
