@@ -5,6 +5,7 @@ import { User, files } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
 import { sha256Hex } from "~~/server/lib/crypto";
+import { requireAuth } from "~~/server/middleware/auth";
 const patchSchema = z.object({ content: z.string().max(500_000) });
 
 export default defineEventHandler(async (event) => {

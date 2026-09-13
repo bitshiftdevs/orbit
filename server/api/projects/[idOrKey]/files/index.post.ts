@@ -3,6 +3,7 @@ import { User, files } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
 import { sha256Hex } from "~~/server/lib/crypto";
+import { requireAuth } from "~~/server/middleware/auth";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 

@@ -131,8 +131,8 @@ watch(
 				api.get<{ sprints: Sprint[] }>(`/projects/${res.project.key}/sprints`),
 				api.get<{ links: IssueLink[] }>(`/issues/${id}/links`),
 			]);
-			sprints.value = rows;
-			links.value = linkRows;
+			sprints.value = rows ?? [];
+			links.value = linkRows ?? [];
 		} catch (err) {
 			notifyError(err);
 			emit("close");

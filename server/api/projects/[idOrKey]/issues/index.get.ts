@@ -1,34 +1,9 @@
-import {
-	and,
-	asc,
-	count,
-	desc,
-	eq,
-	inArray,
-} from "drizzle-orm";
-import { getDb } from "../../db/client";
-import {
-	issueComments,
-	issues,
-	notifications,
-	projects,
-	sprints,
-	users,
-} from "../../db/schema";
-import { loadProject } from "../../lib/access";
-import { assertMember } from "../../lib/access";
-import { requireAuth } from "../../middleware/auth";
-import type { User } from "../../db/schema";
-import type { H3Event } from "h3";
-
-const STATUSES = [
-	"backlog",
-	"todo",
-	"in_progress",
-	"in_review",
-	"done",
-	"cancelled",
-] as const;
+import { asc, count, eq } from "drizzle-orm";
+import { getDb } from "~~/server/db/client";
+import { issues, users } from "~~/server/db/schema";
+import { loadProject, assertMember } from "~~/server/lib/access";
+import { requireAuth } from "~~/server/middleware/auth";
+import type { User } from "~~/server/db/schema";
 
 const author = {
 	id: users.id,

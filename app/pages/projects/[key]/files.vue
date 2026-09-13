@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ name: "project-files" });
-import { inject, onMounted, ref, watch, type Ref } from "vue";
+import { inject, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { Download, Eye, File as FileIcon, RefreshCw, Trash2, Upload } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
 import FilePreview from "~/components/files/FilePreview.vue";
@@ -22,6 +22,20 @@ const refreshing = ref(false);
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+const thumbUrls = ref<Record<string, string>>({});
+
+async function loadThumb(f: FileRow) {
+	if (thumbUrls.value[f.id]) return;
+	if (!f.mimeType.startsWith("image/") && f.mimeType !== "application/pdf") return;
+	try {
+		const blob = await api.raw<Blob>(`/files/${f.id}/preview`);
+		thumbUrls.value[f.id] = URL.createObjectURL(blob);
+	} catch {}
+}
+
+watch(files, (rows) => rows.forEach(loadThumb));
+onUnmounted(() => Object.values(thumbUrls.value).forEach(URL.revokeObjectURL));
+
 async function load(force = false) {
 	if (!project.value) return;
 	refreshing.value = true;
@@ -31,6 +45,7 @@ async function load(force = false) {
 			{ force },
 		);
 		files.value = rows;
+		rows.forEach(loadThumb);
 	} catch (err) {
 		notifyError(err);
 	} finally {
@@ -147,14 +162,14 @@ function onFileSaved(updated: FileRow) {
 				>
 					<div class="h-36 bg-[var(--color-bg-elevated)] grid place-items-center border-b border-[var(--color-border)] overflow-hidden">
 						<img
-							v-if="f.mimeType.startsWith('image/')"
-							:src="`/api/files/${f.id}/preview`"
+							v-if="f.mimeType.startsWith('image/') && thumbUrls[f.id]"
+							:src="thumbUrls[f.id]"
 							:alt="f.name"
 							class="h-full w-full object-cover"
 						/>
 						<embed
-							v-else-if="f.mimeType === 'application/pdf'"
-							:src="`/api/files/${f.id}/preview#toolbar=0&navpanes=0`"
+							v-else-if="f.mimeType === 'application/pdf' && thumbUrls[f.id]"
+							:src="thumbUrls[f.id]"
 							type="application/pdf"
 							class="h-full w-full"
 						/>

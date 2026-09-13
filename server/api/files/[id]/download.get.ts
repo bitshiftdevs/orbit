@@ -3,6 +3,7 @@ import { getDb } from "~~/server/db/client";
 import { User, files } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
+import { requireAuth } from "~~/server/middleware/auth";
 
 export default defineEventHandler(async (event) => {
   await requireAuth(event);

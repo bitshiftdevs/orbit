@@ -3,6 +3,7 @@ import { getDb } from "~~/server/db/client";
 import { User, webhooks } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
+import { requireAuth } from "~~/server/middleware/auth";
 
 const EVENTS = [
   "issue.created",
@@ -16,7 +17,7 @@ const EVENTS = [
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
-  url: z.string().url(),
+  url: z.url(),
   events: z.array(z.enum(EVENTS)).min(1),
   preset: z.enum(["generic", "slack", "discord"]).default("generic"),
 });

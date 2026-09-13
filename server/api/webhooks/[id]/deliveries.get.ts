@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "~~/server/db/client";
 import { User, webhooks, webhookDeliveries } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
+import { requireAuth } from "~~/server/middleware/auth";
 
 export default defineEventHandler(async (event) => {
   await requireAuth(event);

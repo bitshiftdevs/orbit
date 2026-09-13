@@ -25,11 +25,12 @@ const sprints = ref<Sprint[]>([]);
 const selectedIssueId = ref<string | null>(null);
 
 const activeSprint = computed(() => sprints.value.find((s) => s.status === "active") ?? null);
-const boardIssues = computed(() =>
-	activeSprint.value
-		? issues.value.filter((i) => i.sprintId === activeSprint.value!.id)
-		: issues.value,
-);
+const boardIssues = computed(() => {
+	const all = issues.value ?? [];
+	return activeSprint.value
+		? all.filter((i) => i.sprintId === activeSprint.value!.id)
+		: all;
+});
 const newDialog = ref(false);
 const newStatus = ref<IssueStatus>("todo");
 const refreshing = ref(false);

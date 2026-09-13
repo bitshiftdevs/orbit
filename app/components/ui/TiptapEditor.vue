@@ -131,7 +131,7 @@ const SlashCommandExt = Extension.create({
 
 const editor = useEditor({
 	extensions: [
-		StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false }),
+		StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false, link: false }),
 		MarkdownExt.configure({ html: false, tightLists: true, bulletListMarker: "-" }),
 		CodeBlockLowlight.configure({ lowlight }),
 		Table.configure({ resizable: false }),

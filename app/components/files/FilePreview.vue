@@ -54,11 +54,10 @@ watch(
 		if (!f) return;
 		previewLoading.value = true;
 		try {
-			const res = await fetch(`/api/files/${f.id}/preview`, { credentials: "include" });
+			const blob = await api.raw<Blob>(`/files/${f.id}/preview`);
 			if (isText(f)) {
-				previewText.value = await res.text();
+				previewText.value = await blob.text();
 			} else {
-				const blob = await res.blob();
 				previewBlobUrl.value = URL.createObjectURL(blob);
 			}
 		} catch {
