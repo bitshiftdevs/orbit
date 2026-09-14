@@ -111,7 +111,7 @@ async function submit() {
 							class="h-10 w-10 rounded-md grid place-items-center text-white text-sm font-bold"
 							:style="{ background: p.color }"
 						>
-							{{ p.key.slice(0, 2) }}
+							{{ p.icon || p.key.slice(0, 2) }}
 						</div>
 						<Badge
 							v-if="p.status !== 'active'"

@@ -45,6 +45,7 @@ const tabs = [
 	{ name: "project-files", label: "Files" },
 	{ name: "project-webhooks", label: "Webhooks" },
 	{ name: "project-audit", label: "Audit" },
+	{ name: "project-settings", label: "Settings" },
 ];
 </script>
 
@@ -59,7 +60,7 @@ const tabs = [
 					class="h-10 w-10 rounded-md grid place-items-center text-white text-sm font-bold shrink-0"
 					:style="{ background: project.color }"
 				>
-					{{ project.key.slice(0, 2) }}
+					{{ project.icon || project.key.slice(0, 2) }}
 				</div>
 				<div class="min-w-0 flex-1">
 					<div class="flex items-center gap-2">
