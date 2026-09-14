@@ -1,13 +1,13 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { getDb } from "../../db/client";
-import type { User } from "../../db/schema";
-import { issues, projects, users } from "../../db/schema";
-import { assertMember, loadProject } from "../../lib/access";
-import { notifyAssigned, notifyMentions } from "../../lib/mentions";
-import { initialRank, midpoint } from "../../lib/rank";
-import { dispatch } from "../../lib/webhooks";
-import { requireAuth } from "../../middleware/auth";
+import { getDb } from "../../../../db/client";
+import type { User } from "../../../../db/schema";
+import { issues, projects } from "../../../../db/schema";
+import { assertMember, loadProject } from "../../../../lib/access";
+import { notifyAssigned, notifyMentions } from "../../../../lib/mentions";
+import { initialRank, midpoint } from "../../../../lib/rank";
+import { dispatch } from "../../../../lib/webhooks";
+import { requireAuth } from "../../../../middleware/auth";
 
 const STATUSES = [
   "backlog",
@@ -34,14 +34,6 @@ const createSchema = z.object({
   prUrl: z.string().url().max(2048).optional().nullable(),
   dueAt: z.string().datetime().optional().nullable(),
 });
-
-const authorShape = {
-  id: users.id,
-  name: users.name,
-  handle: users.handle,
-  avatarUrl: users.avatarUrl,
-  accentColor: users.accentColor,
-};
 
 export default defineEventHandler(async (event) => {
   await requireAuth(event);

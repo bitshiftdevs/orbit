@@ -27,7 +27,7 @@ const updateSchema = z.object({
   sprintId: z.string().uuid().nullable().optional(),
   parentId: z.string().uuid().optional().nullable(),
   labels: z.array(z.string().max(40)).max(20).optional(),
-  storyPoints: z.number().int().min(0).max(9999).optional(),
+  storyPoints: z.number().int().min(0).max(9999).nullable().optional(),
   prUrl: z.string().url().max(2048).optional().nullable(),
   dueAt: z.string().datetime().optional().nullable(),
 });

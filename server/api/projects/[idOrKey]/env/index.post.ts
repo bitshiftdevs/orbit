@@ -14,7 +14,8 @@ const envSchema = z.object({
     .string()
     .min(1)
     .max(120)
-    .regex(/^[A-Z0-9_]+$/),
+    .transform((v) => v.toUpperCase())
+    .pipe(z.string().regex(/^[A-Z0-9_]+$/)),
   value: z.string(),
 });
 

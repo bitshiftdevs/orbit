@@ -30,7 +30,7 @@ const activeSprint = computed(() => sprints.value.find((s) => s.status === "acti
 const boardIssues = computed(() => {
 	const all = issues.value ?? [];
 	return activeSprint.value
-		? all.filter((i) => i.sprintId === activeSprint.value!.id)
+		? all.filter((i) => i?.sprintId === activeSprint.value?.id)
 		: all;
 });
 const newDialog = ref(false);

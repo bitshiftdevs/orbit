@@ -153,12 +153,21 @@ async function deleteEnv(v: EnvVar) {
 	}
 }
 
-function downloadDotEnv() {
+async function downloadDotEnv() {
 	if (!project.value) return;
-	window.open(
-		`/api/projects/${project.value.key}/env/${activeScope.value}/dotenv`,
-		"_blank",
-	);
+	try {
+		const blob = await api.get<Blob>(
+			`/projects/${project.value.key}/env/${activeScope.value}/dotenv`,
+		);
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${project.value.key.toLowerCase()}.${activeScope.value}.env`;
+		a.click();
+		URL.revokeObjectURL(url);
+	} catch (err) {
+		notifyError(err);
+	}
 }
 </script>
 

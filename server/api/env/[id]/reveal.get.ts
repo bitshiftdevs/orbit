@@ -4,6 +4,7 @@ import { User, envVars } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
 import { decryptSecret } from "~~/server/lib/crypto";
+import { requireAuth } from "~~/server/middleware/auth";
 
 export default defineEventHandler(async (event) => {
   await requireAuth(event);
