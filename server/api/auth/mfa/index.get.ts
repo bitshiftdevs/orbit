@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../../../db/client";
 import { userMfa } from "../../../db/schema";
 import type { User } from "../../../db/schema";
+import { requireAuth } from "~~/server/middleware/auth";
 
 export default defineEventHandler(async (event) => {
   await requireAuth(event);

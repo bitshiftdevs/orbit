@@ -1,3 +1,4 @@
+import { requireAuth } from "~~/server/middleware/auth";
 import { getDb } from "../../../db/client";
 import type { User } from "../../../db/schema";
 import { userMfa } from "../../../db/schema";

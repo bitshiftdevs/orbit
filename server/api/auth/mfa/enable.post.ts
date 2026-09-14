@@ -5,6 +5,7 @@ import { User, userMfa } from "../../../db/schema";
 import { audit } from "../../../lib/audit";
 import { decryptSecret } from "../../../lib/crypto";
 import { verifyTotp } from "../../../lib/totp";
+import { requireAuth } from "~~/server/middleware/auth";
 
 const codeSchema = z.object({ code: z.string().length(6) });
 
