@@ -3,6 +3,7 @@ import z from "zod";
 import { getDb } from "~~/server/db/client";
 import { User, issues, issueLinks } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
+import { requireAuth } from "~~/server/middleware/auth";
 
 const kindEnum = z.enum(["blocks", "duplicates", "relates_to"]);
 

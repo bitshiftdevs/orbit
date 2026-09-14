@@ -12,18 +12,18 @@ import { register as registerSecrets } from "./secrets";
 import { register as registerFiles } from "./files";
 
 export function buildStdioServer(api: ApiFn): McpServer {
-	const server = new McpServer({ name: "orbit", version: "1.0.0" });
+  const server = new McpServer({ name: "orbit", version: "1.0.0" });
 
-	registerProjects(server, api);
-	registerIssues(server, api);
-	registerLinks(server, api);
-	registerSprints(server, api);
-	registerTemplates(server, api);
-	registerAnalytics(server, api);
-	registerTeam(server, api);
-	registerSearch(server, api);
-	registerSecrets(server, api);
-	registerFiles(server, api);
+  registerProjects(server, api);
+  registerIssues(server, api);
+  registerLinks(server, api);
+  registerSprints(server, api);
+  registerTemplates(server, api);
+  registerAnalytics(server, api);
+  registerTeam(server, api);
+  registerSearch(server, api);
+  registerSecrets(server, api);
+  registerFiles(server, api);
 
-	return server;
+  return server;
 }

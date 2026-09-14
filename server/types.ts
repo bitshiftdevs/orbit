@@ -1,7 +1,7 @@
-import type { User } from "@server/db/schema";
+import { User } from "./db/schema";
 
 export type AppEnv = {
-	Variables: {
-		user: User;
-	};
+  Variables: {
+    user: User;
+  };
 };
