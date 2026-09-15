@@ -5,7 +5,7 @@ import { users, apiTokens } from "../../db/schema";
 import { verifyPassword } from "../../lib/auth";
 import { createApiTokenSecret, hashToken } from "../../middleware/auth";
 
-export const API_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+export const API_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 export const TOKEN_LAST_FOUR_MAX = 6;
 
