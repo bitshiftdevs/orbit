@@ -1,8 +1,6 @@
-import { currentUser, requireAuth } from "../../middleware/auth";
-import type { User } from "../../db/schema";
+import { currentUser } from "../../middleware/auth";
 
 export default defineEventHandler(async (event) => {
-	await requireAuth(event);
-	const user = event.context.user as User;
-	return { user };
+	const user = await currentUser(event);
+	return { user: user ?? null };
 });
