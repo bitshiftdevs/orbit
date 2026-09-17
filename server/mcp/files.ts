@@ -77,6 +77,48 @@ export function register(server: McpServer, db: DB, user: User): void {
   );
 
   server.tool(
+    "create_markdown_file",
+    "Create a new markdown file in a project",
+    {
+      idOrKey: z.string().describe("Project UUID or short key"),
+      name: z.string().describe("Filename, must end in .md or .markdown"),
+      content: z.string().max(500_000).optional().describe("Initial file content"),
+      issueId: z.string().uuid().optional().describe("Issue UUID to attach the file to"),
+    },
+    async ({ idOrKey, name, content = "", issueId }) => {
+      if (!/\.md(?:own)?$/i.test(name)) throw new Error("name must end in .md or .markdown");
+      const project = await loadProject(idOrKey);
+      await assertMember(user, project.id);
+      const buf = Buffer.from(content, "utf-8");
+      const [row] = await db
+        .insert(files)
+        .values({
+          projectId: project.id,
+          issueId: issueId ?? null,
+          name,
+          mimeType: "text/markdown",
+          sizeBytes: buf.byteLength,
+          sha256: sha256Hex(buf),
+          data: buf,
+          uploadedById: user.id,
+        })
+        .returning({
+          id: files.id,
+          name: files.name,
+          mimeType: files.mimeType,
+          sizeBytes: files.sizeBytes,
+          sha256: files.sha256,
+          issueId: files.issueId,
+          uploadedById: files.uploadedById,
+          createdAt: files.createdAt,
+        });
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(row, null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
     "update_file_content",
     "Overwrite the content of a text or markdown file",
     {

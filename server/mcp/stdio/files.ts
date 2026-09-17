@@ -29,6 +29,27 @@ export function register(server: McpServer, api: ApiFn): void {
   );
 
   server.tool(
+    "create_markdown_file",
+    "Create a new markdown file in a project",
+    {
+      idOrKey: z.string().describe("Project UUID or short key"),
+      name: z.string().describe("Filename, must end in .md or .markdown"),
+      content: z.string().max(500_000).optional().describe("Initial file content"),
+      issueId: z.string().uuid().optional().describe("Issue UUID to attach the file to"),
+    },
+    async ({ idOrKey, name, content, issueId }) => {
+      const data = await api<{ file: unknown }>(
+        "POST",
+        `/projects/${idOrKey}/files/markdown`,
+        { name, content, issueId },
+      );
+      return {
+        content: [{ type: "text", text: JSON.stringify(data.file, null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
     "get_file_content",
     "Read the plaintext content of a text or markdown file",
     { id: z.string().uuid().describe("File UUID") },
