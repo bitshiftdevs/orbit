@@ -4,6 +4,7 @@ import { z } from "zod";
 import { DB } from "../db/client";
 import { User, files } from "../db/schema";
 import { assertMember, loadProject } from "../lib/access";
+import { sha256Hex } from "../lib/crypto";
 
 export function register(server: McpServer, db: DB, user: User): void {
   server.tool(
@@ -72,6 +73,48 @@ export function register(server: McpServer, db: DB, user: User): void {
       if (!isText) throw new Error("file is not a text file");
       const content = row.data.toString("utf-8");
       return { content: [{ type: "text" as const, text: content }] };
+    },
+  );
+
+  server.tool(
+    "update_file_content",
+    "Overwrite the content of a text or markdown file",
+    {
+      id: z.string().uuid().describe("File UUID"),
+      content: z.string().max(500_000).describe("New file content"),
+    },
+    async ({ id, content }) => {
+      const [row] = await db
+        .select()
+        .from(files)
+        .where(eq(files.id, id))
+        .limit(1);
+      if (!row) throw new Error("file not found");
+      await assertMember(user, row.projectId);
+      const isEditable =
+        row.mimeType.startsWith("text/") ||
+        row.mimeType === "application/json" ||
+        row.name.endsWith(".md") ||
+        row.name.endsWith(".markdown");
+      if (!isEditable) throw new Error("file is not editable");
+      const buf = Buffer.from(content, "utf-8");
+      const [updated] = await db
+        .update(files)
+        .set({ data: buf, sizeBytes: buf.byteLength, sha256: sha256Hex(buf) })
+        .where(eq(files.id, id))
+        .returning({
+          id: files.id,
+          name: files.name,
+          mimeType: files.mimeType,
+          sizeBytes: files.sizeBytes,
+          sha256: files.sha256,
+          issueId: files.issueId,
+          uploadedById: files.uploadedById,
+          createdAt: files.createdAt,
+        });
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(updated, null, 2) }],
+      };
     },
   );
 }
