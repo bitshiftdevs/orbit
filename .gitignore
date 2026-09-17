@@ -34,6 +34,9 @@ coverage
 .env.local
 !.env.schema
 
+# Claude Code MCP config (contains project-specific tokens)
+.mcp.json
+
 # netlify
 .netlify
 
