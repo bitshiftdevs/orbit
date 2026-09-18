@@ -15,12 +15,19 @@
       "when": 1788863254621,
       "tag": "0001_old_nomad",
       "breakpoints": true
-    }
-    ,{
+    },
+    {
       "idx": 2,
       "version": "7",
       "when": 1788880808367,
       "tag": "0002_improvements",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789689543197,
+      "tag": "0003_minor_midnight",
       "breakpoints": true
     }
   ]

@@ -7,7 +7,7 @@ import Dialog from "~/components/ui/Dialog.vue";
 import Input from "~/components/ui/Input.vue";
 import Select from "~/components/ui/Select.vue";
 import { api } from "~/lib/api";
-import type { ApiToken } from "~/types/domain";
+import type { ApiToken, Project } from "~/types/domain";
 import { notify, notifyError } from "~/lib/notify";
 import { timeAgo } from "~/lib/utils";
 import { useConfirmDialog } from "~/composables/useConfirmDialog";
@@ -15,9 +15,37 @@ import { useConfirmDialog } from "~/composables/useConfirmDialog";
 const { confirm } = useConfirmDialog();
 
 const tokens = ref<ApiToken[]>([]);
+const projects = ref<Project[]>([]);
 const tokenOpen = ref(false);
-const tokenForm = ref({ name: "", expiresInDays: "" });
+const tokenForm = ref({
+	name: "",
+	expiresInDays: "",
+	projectKey: "",
+	scopes: {
+		read: true,
+		write: true,
+		"env:read": false,
+		"secrets:read": false,
+	} as Record<string, boolean>,
+});
 const freshToken = ref<string | null>(null);
+const freshTokenProjectKey = ref<string>("");
+const freshTokenScopes = ref<string[]>([]);
+
+const projectById = computed(() => {
+	const map: Record<string, Project> = {};
+	for (const p of projects.value) map[p.id] = p;
+	return map;
+});
+
+const projectOptions = computed(() => [
+	{ value: "", label: "Account-wide (no project scope)" },
+	...projects.value.map((p) => ({ value: p.key, label: `${p.key} — ${p.name}` })),
+]);
+
+const isCiToken = computed(() =>
+	freshTokenScopes.value.some((s) => s === "env:read" || s === "secrets:read"),
+);
 
 const mcpConfig = computed(() =>
 	JSON.stringify(
@@ -35,10 +63,35 @@ const mcpConfig = computed(() =>
 	),
 );
 
+const actionSnippet = computed(() => {
+	const project = freshTokenProjectKey.value || "YOUR_PROJECT_KEY";
+	const wantsSecrets = freshTokenScopes.value.includes("secrets:read");
+	return `- name: Load Orbit env
+  uses: bitshiftdevs/orbit/action@v1
+  with:
+    orbit-url: ${location.origin}
+    token: \${{ secrets.ORBIT_TOKEN }}
+    project: ${project}
+    scope: production${wantsSecrets ? "" : "\n    include-secrets: false"}`;
+});
+
+const curlSnippet = computed(() => {
+	const project = freshTokenProjectKey.value || "YOUR_PROJECT_KEY";
+	const include = freshTokenScopes.value.includes("secrets:read")
+		? "?include=secrets"
+		: "";
+	return `curl -H "Authorization: Bearer ${freshToken.value}" \\
+  "${location.origin}/api/projects/${project}/env/production/dotenv${include}"`;
+});
+
 async function loadTokens() {
 	try {
-		const { tokens: rows } = await api.get<{ tokens: ApiToken[] }>("/tokens");
+		const [{ tokens: rows }, { projects: ps }] = await Promise.all([
+			api.get<{ tokens: ApiToken[] }>("/tokens"),
+			api.get<{ projects: Project[] }>("/projects"),
+		]);
 		tokens.value = rows;
+		projects.value = ps;
 	} catch (err) {
 		notifyError(err);
 	}
@@ -46,10 +99,19 @@ async function loadTokens() {
 
 async function createToken() {
 	try {
+		const scopes = Object.entries(tokenForm.value.scopes)
+			.filter(([, on]) => on)
+			.map(([k]) => k);
+		if (!scopes.length) {
+			notify("Pick at least one scope", "error");
+			return;
+		}
 		const { token, secret } = await api.post<{ token: ApiToken; secret: string }>(
 			"/tokens",
 			{
 				name: tokenForm.value.name,
+				scopes,
+				projectKey: tokenForm.value.projectKey || undefined,
 				expiresInDays: tokenForm.value.expiresInDays
 					? Number(tokenForm.value.expiresInDays)
 					: undefined,
@@ -57,7 +119,8 @@ async function createToken() {
 		);
 		tokens.value.unshift(token);
 		freshToken.value = secret;
-		tokenForm.value = { name: "", expiresInDays: "" };
+		freshTokenProjectKey.value = tokenForm.value.projectKey;
+		freshTokenScopes.value = scopes;
 	} catch (err) {
 		notifyError(err);
 	}
@@ -73,6 +136,22 @@ async function revokeToken(t: ApiToken) {
 async function copy(v: string) {
 	await navigator.clipboard.writeText(v);
 	notify("Copied", "success");
+}
+
+function resetForm() {
+	tokenForm.value = {
+		name: "",
+		expiresInDays: "",
+		projectKey: "",
+		scopes: { read: true, write: true, "env:read": false, "secrets:read": false },
+	};
+	freshToken.value = null;
+	freshTokenProjectKey.value = "";
+	freshTokenScopes.value = [];
+}
+
+function tokenScopeBadges(t: ApiToken): string[] {
+	return t.scopes ?? [];
 }
 
 onMounted(loadTokens);
@@ -102,7 +181,19 @@ onMounted(loadTokens);
 			>
 				<KeyRound class="h-4 w-4 text-[var(--color-fg-subtle)]" />
 				<div class="min-w-0 flex-1">
-					<div class="text-sm truncate">{{ t.name }}</div>
+					<div class="text-sm truncate flex items-center gap-2">
+						<span>{{ t.name }}</span>
+						<Badge v-if="t.projectId" tone="blue">
+							{{ projectById[t.projectId]?.key ?? "project" }}
+						</Badge>
+						<Badge
+							v-for="s in tokenScopeBadges(t)"
+							:key="s"
+							tone="neutral"
+						>
+							{{ s }}
+						</Badge>
+					</div>
 					<div class="text-[11px] text-[var(--color-fg-subtle)] mono">
 						orb_…{{ t.lastFour }} · used {{ t.lastUsedAt ? timeAgo(t.lastUsedAt) : "never" }}
 					</div>
@@ -125,12 +216,42 @@ onMounted(loadTokens);
 		</div>
 	</section>
 
-	<Dialog v-model:open="tokenOpen" title="New API token" width="440px">
+	<Dialog v-model:open="tokenOpen" title="New API token" width="520px" @close="resetForm">
 		<div class="p-5 space-y-4">
 			<div v-if="!freshToken" class="space-y-4">
 				<div class="space-y-1">
 					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Name</label>
-					<Input v-model="tokenForm.name" placeholder="Local dev CLI" />
+					<Input v-model="tokenForm.name" placeholder="Local dev CLI · CI pipeline · ..." />
+				</div>
+				<div class="space-y-1">
+					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Project</label>
+					<Select
+						v-model="tokenForm.projectKey"
+						:options="projectOptions"
+					/>
+					<p class="text-[11px] text-[var(--color-fg-subtle)]">
+						Project-scoped tokens can only touch that project's env vars and secrets — recommended for CI.
+					</p>
+				</div>
+				<div class="space-y-1">
+					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Scopes</label>
+					<div class="grid grid-cols-2 gap-2">
+						<label
+							v-for="(_, key) in tokenForm.scopes"
+							:key="key"
+							class="flex items-center gap-2 px-2.5 py-1.5 rounded border border-[var(--color-border)] text-xs cursor-pointer hover:bg-[var(--color-panel-hover)]"
+						>
+							<input
+								type="checkbox"
+								v-model="tokenForm.scopes[key]"
+								class="accent-[var(--color-accent)]"
+							/>
+							<code class="mono">{{ key }}</code>
+						</label>
+					</div>
+					<p class="text-[11px] text-[var(--color-fg-subtle)]">
+						For a GitHub Actions token: pick <code class="mono">env:read</code> (and <code class="mono">secrets:read</code> if you need secrets). Leave <code class="mono">write</code> unchecked.
+					</p>
 				</div>
 				<div class="space-y-1">
 					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Expires in</label>
@@ -157,7 +278,41 @@ onMounted(loadTokens);
 					</Button>
 				</div>
 
-				<div class="space-y-1.5">
+				<div v-if="isCiToken" class="space-y-1.5">
+					<p class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)] font-semibold">
+						GitHub Actions
+					</p>
+					<p class="text-xs text-[var(--color-fg-muted)]">
+						Add the token as a repo secret named <code class="mono">ORBIT_TOKEN</code>, then paste this step into your workflow.
+					</p>
+					<div class="relative">
+						<pre class="mono text-xs p-3 rounded bg-[var(--color-bg-elevated)] border border-[var(--color-border)] overflow-x-auto whitespace-pre">{{ actionSnippet }}</pre>
+						<Button
+							size="sm"
+							variant="outline"
+							class="absolute top-2 right-2"
+							@click="copy(actionSnippet)"
+						>
+							<Copy class="h-3 w-3" />
+						</Button>
+					</div>
+					<p class="text-[11px] text-[var(--color-fg-subtle)] pt-1">
+						Or fetch directly with curl:
+					</p>
+					<div class="relative">
+						<pre class="mono text-xs p-3 rounded bg-[var(--color-bg-elevated)] border border-[var(--color-border)] overflow-x-auto whitespace-pre">{{ curlSnippet }}</pre>
+						<Button
+							size="sm"
+							variant="outline"
+							class="absolute top-2 right-2"
+							@click="copy(curlSnippet)"
+						>
+							<Copy class="h-3 w-3" />
+						</Button>
+					</div>
+				</div>
+
+				<div v-else class="space-y-1.5">
 					<p class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)] font-semibold">
 						MCP configuration
 					</p>
@@ -182,7 +337,7 @@ onMounted(loadTokens);
 			<Button
 				v-if="!freshToken"
 				variant="ghost"
-				@click="tokenOpen = false"
+				@click="tokenOpen = false; resetForm()"
 			>
 				Cancel
 			</Button>
@@ -196,7 +351,7 @@ onMounted(loadTokens);
 			<Button
 				v-else
 				variant="primary"
-				@click="freshToken = null; tokenOpen = false"
+				@click="tokenOpen = false; resetForm()"
 			>
 				Done
 			</Button>

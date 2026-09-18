@@ -4,7 +4,7 @@ import { secrets, User } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
 import { decryptSecret } from "~~/server/lib/crypto";
-import { requireAuth } from "~~/server/middleware/auth";
+import { ensureTokenProject, ensureTokenScope, requireAuth } from "~~/server/middleware/auth";
 
 export default defineEventHandler(async (event) => {
   await requireAuth(event);
@@ -21,6 +21,8 @@ export default defineEventHandler(async (event) => {
   if (!row)
     throw createError({ statusCode: 404, statusMessage: "secret not found" });
   await assertMember(user, row.projectId);
+  ensureTokenProject(event, row.projectId);
+  ensureTokenScope(event, "secrets:read");
 
   const value = decryptSecret(row.ciphertext);
   const reason = getQuery(event).reason ?? null;

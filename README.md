@@ -28,7 +28,8 @@ limit. Owned by us, self-hosted on Netlify, backed by Postgres.
 - **⌘K palette** — jump to any project, issue (by `KEY-42`), member or secret
 - **Keyboard shortcuts** — `c` new issue, `/` search, `g d/p/t/s` navigate, `esc` close
 - **Webhooks** — Slack, Discord, or any URL; HMAC-signed; delivery log
-- **API tokens** — `Authorization: Bearer orb_…` for CLI/CI/MCP
+- **API tokens** — `Authorization: Bearer orb_…` for CLI/CI/MCP; project-scoped tokens gate `env:read` / `secrets:read`
+- **GitHub Action** — [`action/`](./action) — `uses: bitshiftdevs/orbit/action@v1` loads a project's env + secrets into any workflow
 - **TOTP MFA** — enrol from Settings, works with any authenticator app
 - **Nightly backup** — Netlify scheduled function dumps DB to any S3-compatible bucket
 - **Audit log** — every secret read, file download, and admin action

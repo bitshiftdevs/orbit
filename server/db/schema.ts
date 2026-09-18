@@ -414,6 +414,7 @@ export const apiTokens = pgTable(
 		userId: uuid()
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
+		projectId: uuid().references(() => projects.id, { onDelete: "cascade" }),
 		name: varchar({ length: 120 }).notNull(),
 		tokenHash: varchar({ length: 64 }).notNull(),
 		lastFour: varchar({ length: 8 }).notNull(),
@@ -426,6 +427,7 @@ export const apiTokens = pgTable(
 	(t) => [
 		uniqueIndex("api_tokens_hash_uniq").on(t.tokenHash),
 		index("api_tokens_user_idx").on(t.userId),
+		index("api_tokens_project_idx").on(t.projectId),
 	],
 );
 

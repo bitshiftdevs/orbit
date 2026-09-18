@@ -37,12 +37,44 @@ export async function currentUser(event: H3Event) {
           .set({ lastUsedAt: new Date() })
           .where(eq(apiTokens.id, row.token.id))
           .catch(() => {});
+        event.context.apiToken = {
+          id: row.token.id,
+          projectId: row.token.projectId,
+          scopes: row.token.scopes ?? [],
+        };
         return row.user;
       }
     }
   }
 
   return null;
+}
+
+export type ApiTokenContext = {
+  id: string;
+  projectId: string | null;
+  scopes: string[];
+};
+
+export function getTokenContext(event: H3Event): ApiTokenContext | null {
+  return (event.context.apiToken as ApiTokenContext | undefined) ?? null;
+}
+
+export function ensureTokenScope(event: H3Event, scope: string): void {
+  const token = getTokenContext(event);
+  if (!token) return;
+  if (token.scopes.includes(scope)) return;
+  if (token.scopes.includes("write")) return;
+  if (scope.endsWith(":read") && token.scopes.includes("read")) return;
+  throw createError({ statusCode: 403, statusMessage: `missing scope: ${scope}` });
+}
+
+export function ensureTokenProject(event: H3Event, projectId: string): void {
+  const token = getTokenContext(event);
+  if (!token || !token.projectId) return;
+  if (token.projectId !== projectId) {
+    throw createError({ statusCode: 403, statusMessage: "token not scoped to this project" });
+  }
 }
 
 export async function requireAuth(event: H3Event): Promise<void> {

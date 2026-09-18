@@ -219,6 +219,7 @@ export type ApiToken = {
 	name: string;
 	lastFour: string;
 	scopes: string[];
+	projectId: string | null;
 	lastUsedAt: string | null;
 	expiresAt: string | null;
 	revokedAt: string | null;

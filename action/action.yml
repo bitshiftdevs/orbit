@@ -1,0 +1,50 @@
+name: Orbit Env
+description: Fetch environment variables and secrets from Orbit into the CI job.
+branding:
+  icon: unlock
+  color: blue
+inputs:
+  orbit-url:
+    description: Base URL of your Orbit instance (e.g. https://orbit.example.com).
+    required: true
+  token:
+    description: Orbit project-scoped API token (starts with orb_). Store as a GitHub secret.
+    required: true
+  project:
+    description: Project key (e.g. ORBIT).
+    required: true
+  scope:
+    description: Environment scope to pull.
+    required: false
+    default: production
+  include-secrets:
+    description: Also include project secrets in the export.
+    required: false
+    default: "true"
+  export-to-env:
+    description: Write each variable to $GITHUB_ENV so later steps see them.
+    required: false
+    default: "true"
+  output-file:
+    description: Optional path to also write the exported vars as a .env file.
+    required: false
+    default: ""
+  mask:
+    description: Mask each value in the runner log (::add-mask::).
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Fetch from Orbit
+      shell: bash
+      env:
+        ORBIT_URL: ${{ inputs.orbit-url }}
+        ORBIT_TOKEN: ${{ inputs.token }}
+        ORBIT_PROJECT: ${{ inputs.project }}
+        ORBIT_SCOPE: ${{ inputs.scope }}
+        ORBIT_INCLUDE_SECRETS: ${{ inputs.include-secrets }}
+        ORBIT_EXPORT_TO_ENV: ${{ inputs.export-to-env }}
+        ORBIT_OUTPUT_FILE: ${{ inputs.output-file }}
+        ORBIT_MASK: ${{ inputs.mask }}
+      run: ${{ github.action_path }}/entrypoint.sh

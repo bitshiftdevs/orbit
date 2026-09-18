@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ name: "project-secrets" });
 import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
-import { Copy, Download, Eye, EyeOff, Plus, RefreshCw, Trash2 } from "lucide-vue-next";
+import { Copy, Download, Eye, EyeOff, Github, Plus, RefreshCw, Trash2 } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
 import Dialog from "~/components/ui/Dialog.vue";
 import Input from "~/components/ui/Input.vue";
@@ -30,6 +30,19 @@ const envForm = ref({ name: "", value: "" });
 const envByScope = computed(() =>
 	envVars.value.filter((e) => e.scope === activeScope.value),
 );
+
+const ciDialog = ref(false);
+const ciSnippet = computed(() => {
+	const key = project.value?.key ?? "YOUR_PROJECT_KEY";
+	const origin = typeof window !== "undefined" ? window.location.origin : "https://orbit.example.com";
+	return `- name: Load Orbit env
+  uses: bitshiftdevs/orbit/action@v1
+  with:
+    orbit-url: ${origin}
+    token: \${{ secrets.ORBIT_TOKEN }}
+    project: ${key}
+    scope: ${activeScope.value}`;
+});
 
 const refreshing = ref(false);
 
@@ -267,6 +280,10 @@ async function downloadDotEnv() {
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
+						<Button variant="outline" size="sm" @click="ciDialog = true">
+							<Github class="h-3.5 w-3.5" />
+							Use in CI
+						</Button>
 						<Button variant="outline" size="sm" @click="downloadDotEnv">
 							<Download class="h-3.5 w-3.5" />
 							.env
@@ -297,6 +314,13 @@ async function downloadDotEnv() {
 							@click="revealEnv(v)"
 						>
 							<component :is="envRevealed[v.id] ? EyeOff : Eye" class="h-4 w-4" />
+						</button>
+						<button
+							v-if="envRevealed[v.id]"
+							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+							@click="copy(envRevealed[v.id]!)"
+						>
+							<Copy class="h-4 w-4" />
 						</button>
 						<button
 							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-red-400 hover:bg-red-500/10"
@@ -350,6 +374,39 @@ async function downloadDotEnv() {
 			<template #footer>
 				<Button variant="ghost" @click="envDialog = false">Cancel</Button>
 				<Button variant="primary" @click="saveEnvVar">Save</Button>
+			</template>
+		</Dialog>
+
+		<Dialog v-model:open="ciDialog" title="Load env into GitHub Actions" width="580px">
+			<div class="p-5 space-y-4 text-sm">
+				<ol class="space-y-2 text-[var(--color-fg-muted)] list-decimal list-inside">
+					<li>
+						Create a project-scoped token:
+						<NuxtLink to="/settings" class="text-[var(--color-accent)] hover:underline">
+							Settings → API tokens
+						</NuxtLink>
+						— pick this project, check <code class="mono">env:read</code> (and <code class="mono">secrets:read</code> if you need secrets).
+					</li>
+					<li>Store the token as a repo secret named <code class="mono">ORBIT_TOKEN</code>.</li>
+					<li>Paste this step into <code class="mono">.github/workflows/*.yml</code>:</li>
+				</ol>
+				<div class="relative">
+					<pre class="mono text-xs p-3 rounded bg-[var(--color-bg-elevated)] border border-[var(--color-border)] overflow-x-auto whitespace-pre">{{ ciSnippet }}</pre>
+					<Button
+						size="sm"
+						variant="outline"
+						class="absolute top-2 right-2"
+						@click="copy(ciSnippet)"
+					>
+						<Copy class="h-3 w-3" />
+					</Button>
+				</div>
+				<p class="text-xs text-[var(--color-fg-subtle)]">
+					Values are auto-masked in job logs. Later steps see each variable via <code class="mono">$GITHUB_ENV</code>.
+				</p>
+			</div>
+			<template #footer>
+				<Button variant="primary" @click="ciDialog = false">Done</Button>
 			</template>
 		</Dialog>
 	</div>
