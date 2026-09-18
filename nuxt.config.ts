@@ -24,7 +24,6 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
-        { rel: "icon", href: "/favicon.ico", sizes: "any" },
         { rel: "preconnect", href: "https://rsms.me" },
         { rel: "stylesheet", href: "https://rsms.me/inter/inter.css" },
       ],

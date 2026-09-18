@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import OrbitLogo from "~/components/OrbitLogo.vue";
 import Button from "~/components/ui/Button.vue";
 import Input from "~/components/ui/Input.vue";
 import { notifyError } from "~/lib/notify";
@@ -35,9 +36,9 @@ async function submit() {
 		<div class="w-full max-w-sm">
 			<div class="flex flex-col items-center gap-2 mb-8">
 				<div
-					class="h-12 w-12 rounded-lg grid place-items-center bg-[var(--color-accent)] text-white text-lg font-bold shadow-[0_0_40px_var(--color-accent-glow)] dot-pulse"
+					class="h-12 w-12 rounded-lg grid place-items-center bg-[var(--color-accent)] text-white shadow-[0_0_40px_var(--color-accent-glow)] dot-pulse"
 				>
-					◆
+					<OrbitLogo class="h-7 w-7" />
 				</div>
 				<h1 class="text-lg font-semibold tracking-tight">Orbit</h1>
 				<p class="text-xs text-[var(--color-fg-subtle)] uppercase tracking-widest">
