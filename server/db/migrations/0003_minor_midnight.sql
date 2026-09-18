@@ -1,4 +1,9 @@
-CREATE TYPE "public"."issue_link_kind" AS ENUM('blocks', 'duplicates', 'relates_to');--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."issue_link_kind" AS ENUM('blocks', 'duplicates', 'relates_to');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "issue_links" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"source_id" uuid NOT NULL,
@@ -21,9 +26,9 @@ CREATE TABLE IF NOT EXISTS "issue_templates" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "api_tokens" ADD COLUMN "project_id" uuid;--> statement-breakpoint
-ALTER TABLE "issues" ADD COLUMN "pr_url" text;--> statement-breakpoint
-ALTER TABLE "issues" ADD COLUMN "search_vector" "tsvector";--> statement-breakpoint
+ALTER TABLE "api_tokens" ADD COLUMN IF NOT EXISTS "project_id" uuid;--> statement-breakpoint
+ALTER TABLE "issues" ADD COLUMN IF NOT EXISTS "pr_url" text;--> statement-breakpoint
+ALTER TABLE "issues" ADD COLUMN IF NOT EXISTS "search_vector" "tsvector";--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "issue_links" ADD CONSTRAINT "issue_links_source_id_issues_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."issues"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
