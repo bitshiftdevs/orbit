@@ -36,3 +36,13 @@ Subsequent steps see each variable as an environment variable. Values are auto-m
 ## Requirements
 
 Runner must have `curl` and `jq` (present on all GitHub-hosted runners by default).
+
+## Releasing a new version
+
+Consumers pin `@v1` — that tag is force-moved to each new `v1.x.y` release automatically.
+
+```sh
+scripts/release-action.sh v1.1.0
+```
+
+The script pushes the immutable `v1.1.0` tag; `.github/workflows/release-action.yml` picks it up and force-moves `v1` to the same commit.
