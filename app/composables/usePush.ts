@@ -10,10 +10,29 @@ function urlBase64ToUint8Array(base64: string) {
 	return out;
 }
 
+export type Browser = "brave" | "chrome" | "edge" | "firefox" | "safari" | "other";
+
+async function detectBrowser(): Promise<Browser> {
+	if (typeof navigator === "undefined") return "other";
+	const brave = (navigator as any).brave;
+	if (brave && typeof brave.isBrave === "function") {
+		try {
+			if (await brave.isBrave()) return "brave";
+		} catch {}
+	}
+	const ua = navigator.userAgent;
+	if (/Edg\//.test(ua)) return "edge";
+	if (/Firefox\//.test(ua)) return "firefox";
+	if (/Chrome\//.test(ua)) return "chrome";
+	if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return "safari";
+	return "other";
+}
+
 const supported = ref(false);
 const permission = ref<NotificationPermission>("default");
 const subscribed = ref(false);
 const busy = ref(false);
+const browser = ref<Browser>("other");
 let initialized = false;
 
 async function detect() {
@@ -24,6 +43,7 @@ async function detect() {
 		"serviceWorker" in navigator &&
 		"PushManager" in window &&
 		"Notification" in window;
+	browser.value = await detectBrowser();
 	if (!supported.value) return;
 	permission.value = Notification.permission;
 	try {
@@ -96,6 +116,7 @@ export function usePush() {
 		permission: computed(() => permission.value),
 		subscribed: computed(() => subscribed.value),
 		busy: computed(() => busy.value),
+		browser: computed(() => browser.value),
 		subscribe,
 		unsubscribe,
 	};

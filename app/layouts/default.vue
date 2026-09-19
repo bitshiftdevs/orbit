@@ -30,8 +30,8 @@ const { isLight, toggle: toggleTheme } = useTheme();
 const paletteOpen = ref(false);
 const shortcutsOpen = ref(false);
 
-if (import.meta.client && !projects.items.length) {
-  projects.load();
+if (import.meta.client) {
+  projects.ensureLoaded();
 }
 
 useShortcuts({

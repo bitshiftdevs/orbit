@@ -11,11 +11,13 @@ import type { ApiToken, Project } from "~/types/domain";
 import { notify, notifyError } from "~/lib/notify";
 import { timeAgo } from "~/lib/utils";
 import { useConfirmDialog } from "~/composables/useConfirmDialog";
+import { useProjects } from "~/stores/projects";
 
 const { confirm } = useConfirmDialog();
+const projectsStore = useProjects();
 
 const tokens = ref<ApiToken[]>([]);
-const projects = ref<Project[]>([]);
+const projects = computed<Project[]>(() => projectsStore.items);
 const tokenOpen = ref(false);
 const tokenForm = ref({
 	name: "",
@@ -86,12 +88,11 @@ const curlSnippet = computed(() => {
 
 async function loadTokens() {
 	try {
-		const [{ tokens: rows }, { projects: ps }] = await Promise.all([
+		const [{ tokens: rows }] = await Promise.all([
 			api.get<{ tokens: ApiToken[] }>("/tokens"),
-			api.get<{ projects: Project[] }>("/projects"),
+			projectsStore.ensureLoaded(),
 		]);
 		tokens.value = rows;
-		projects.value = ps;
 	} catch (err) {
 		notifyError(err);
 	}

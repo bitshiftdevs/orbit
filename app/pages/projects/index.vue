@@ -27,7 +27,7 @@ const form = ref({
 });
 const saving = ref(false);
 
-onMounted(() => projects.load());
+onMounted(() => projects.ensureLoaded());
 
 const canCreate = () => session.user?.role !== "member";
 

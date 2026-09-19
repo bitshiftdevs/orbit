@@ -5,17 +5,30 @@ import { api, type Project, type SessionUser } from "~/lib/api";
 export const useProjects = defineStore("projects", () => {
 	const items = ref<Project[]>([]);
 	const loading = ref(false);
+	const loaded = ref(false);
+	let inflight: Promise<void> | null = null;
 
 	async function load() {
+		if (inflight) return inflight;
 		loading.value = true;
-		try {
-			const { projects } = await api.get<{ projects: Project[] }>(
-				"/projects",
-			);
-			items.value = projects;
-		} finally {
-			loading.value = false;
-		}
+		inflight = (async () => {
+			try {
+				const { projects } = await api.get<{ projects: Project[] }>(
+					"/projects",
+				);
+				items.value = projects;
+				loaded.value = true;
+			} finally {
+				loading.value = false;
+				inflight = null;
+			}
+		})();
+		return inflight;
+	}
+
+	async function ensureLoaded() {
+		if (loaded.value) return;
+		return load();
 	}
 
 	async function create(input: {
@@ -52,5 +65,5 @@ export const useProjects = defineStore("projects", () => {
 		items.value.find((p) => p.key === key.toUpperCase()) ?? null,
 	);
 
-	return { items, loading, load, create, get, active };
+	return { items, loading, loaded, load, ensureLoaded, create, get, active };
 });
