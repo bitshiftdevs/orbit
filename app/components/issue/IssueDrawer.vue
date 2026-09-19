@@ -345,6 +345,21 @@ async function removeLink(linkId: string) {
 								@update:model-value="(v) => draft!.assigneeId = v"
 							/>
 						</div>
+						<div class="space-y-1">
+							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Reporter</span>
+							<div v-if="issue.reporter" class="flex items-center gap-2 px-2 py-1.5 rounded bg-[var(--color-panel)] text-[var(--color-fg)]">
+								<Avatar
+									:name="issue.reporter.name"
+									:src="issue.reporter.avatarUrl"
+									:color="issue.reporter.accentColor"
+									size="xs"
+								/>
+								<span class="truncate">{{ issue.reporter.name }}</span>
+							</div>
+							<div v-else class="px-2 py-1.5 rounded bg-[var(--color-panel)] text-[var(--color-fg-subtle)] italic">
+								Unknown
+							</div>
+						</div>
 						<label class="space-y-1">
 							<span class="uppercase tracking-wider text-[var(--color-fg-subtle)]">Story points</span>
 							<Input

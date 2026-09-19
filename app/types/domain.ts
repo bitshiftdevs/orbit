@@ -68,6 +68,7 @@ export type Issue = {
 	assigneeId: string | null;
 	assignee: IssueAssignee | null;
 	reporterId: string | null;
+	reporter: IssueAssignee | null;
 	parentId: string | null;
 	sprintId: string | null;
 	labels: string[];

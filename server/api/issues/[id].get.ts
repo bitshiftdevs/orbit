@@ -1,10 +1,10 @@
-import { asc, eq, innerJoin, leftJoin, select } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { asc, eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { issueComments, issues, projects, users } from "../../db/schema";
 import { assertMember } from "../../lib/access";
 import { requireAuth } from "../../middleware/auth";
 import type { User } from "../../db/schema";
-import type { H3Event } from "h3";
 
 const authorShape = {
 	id: users.id,
@@ -20,11 +20,26 @@ export default defineEventHandler(async (event) => {
 	const db = getDb();
 	const id = getRouterParam(event, "id") as string;
 
+	const reporter = alias(users, "reporter");
+	const reporterShape = {
+		id: reporter.id,
+		name: reporter.name,
+		handle: reporter.handle,
+		avatarUrl: reporter.avatarUrl,
+		accentColor: reporter.accentColor,
+	};
+
 	const [row] = await db
-		.select({ issue: issues, project: projects, assignee: authorShape })
+		.select({
+			issue: issues,
+			project: projects,
+			assignee: authorShape,
+			reporter: reporterShape,
+		})
 		.from(issues)
 		.innerJoin(projects, eq(projects.id, issues.projectId))
 		.leftJoin(users, eq(users.id, issues.assigneeId))
+		.leftJoin(reporter, eq(reporter.id, issues.reporterId))
 		.where(eq(issues.id, id))
 		.limit(1);
 
@@ -46,6 +61,7 @@ export default defineEventHandler(async (event) => {
 			...row.issue,
 			key: `${row.project.key}-${row.issue.number}`,
 			assignee: row.assignee?.id ? row.assignee : null,
+			reporter: row.reporter?.id ? row.reporter : null,
 		},
 		project: row.project,
 		comments: comments.map((c) => ({
