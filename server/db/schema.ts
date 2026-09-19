@@ -404,6 +404,26 @@ export const notifications = pgTable(
 	],
 );
 
+export const pushSubscriptions = pgTable(
+	"push_subscriptions",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: uuid()
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		endpoint: text().notNull(),
+		p256dh: text().notNull(),
+		auth: text().notNull(),
+		userAgent: text(),
+		createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+		lastSeenAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+	},
+	(t) => [
+		uniqueIndex("push_subscriptions_endpoint_uniq").on(t.endpoint),
+		index("push_subscriptions_user_idx").on(t.userId),
+	],
+);
+
 // ---------------------------------------------------------------------------
 // Personal API tokens (bearer)
 // ---------------------------------------------------------------------------

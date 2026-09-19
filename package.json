@@ -14,7 +14,8 @@
     "db:migrate": "bun run server/db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "bun run server/db/seed.ts"
+    "db:seed": "bun run server/db/seed.ts",
+    "vapid:keys": "bun run scripts/generate-vapid-keys.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -59,19 +60,21 @@
     "vee-validate": "^4.15.1",
     "vue": "^3.5.17",
     "vue-sonner": "^2.0.2",
+    "web-push": "^3.6.7",
     "zod": "^4.0.5"
   },
   "devDependencies": {
+    "@nuxt/test-utils": "latest",
     "@tsconfig/node22": "^22.0.2",
     "@types/bun": "^1.1.14",
     "@types/node": "^22.15.32",
+    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/tsconfig": "^0.7.0",
     "drizzle-kit": "^0.28.1",
     "typescript": "~5.8.0",
     "vercel": "^44.0.0",
     "vite": "^7.0.0",
-    "vue-tsc": "^2.2.10",
-    "@nuxt/test-utils": "latest"
+    "vue-tsc": "^2.2.10"
   }
 }

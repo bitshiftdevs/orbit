@@ -8,6 +8,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: "/api",
+      vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
     },
   },
 

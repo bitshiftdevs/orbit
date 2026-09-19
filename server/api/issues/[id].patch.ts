@@ -5,6 +5,7 @@ import type { User } from "../../db/schema";
 import { issues, notifications, projects, users } from "../../db/schema";
 import { assertMember } from "../../lib/access";
 import { notifyAssigned, notifyMentions } from "../../lib/mentions";
+import { sendPushToUsers } from "../../lib/push";
 import { dispatch } from "../../lib/webhooks";
 import { requireAuth } from "../../middleware/auth";
 
@@ -116,17 +117,23 @@ export default defineEventHandler(async (event) => {
       actor: actor.handle,
     });
     if (existing.assigneeId && existing.assigneeId !== actor.id) {
+      const statusMsg = `${key} moved to ${row.status.replace("_", " ")}`;
       getDb()
         .insert(notifications)
         .values({
           userId: existing.assigneeId,
           kind: "status_change" as const,
-          message: `${key} moved to ${row.status.replace("_", " ")}`,
+          message: statusMsg,
           projectId: existing.projectId,
           issueId: existing.id,
           actorId: actor.id,
         })
         .catch(() => {});
+      sendPushToUsers([existing.assigneeId], {
+        title: key,
+        body: statusMsg,
+        tag: `issue:${existing.id}`,
+      }).catch(() => {});
     }
   } else {
     dispatch(existing.projectId, "issue.updated", {

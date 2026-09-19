@@ -1,6 +1,7 @@
 import { inArray } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { users, notifications } from "../db/schema";
+import { sendPushToUsers } from "./push";
 
 const MENTION_RE = /(^|[^\w])@([a-z0-9_-]{2,40})/gi;
 
@@ -41,6 +42,10 @@ export async function notifyMentions(opts: {
       actorId: opts.actorId,
     })),
   );
+  sendPushToUsers(
+    rows.map((u) => u.id),
+    { title: "You were mentioned", body: opts.message, tag: `issue:${opts.issueId}` },
+  ).catch(() => {});
   return rows.length;
 }
 
@@ -53,14 +58,20 @@ export async function notifyAssigned(opts: {
   issueTitle: string;
 }) {
   if (opts.assigneeId === opts.actorId) return;
+  const message = `Assigned you ${opts.issueKey} — ${opts.issueTitle}`;
   await getDb()
     .insert(notifications)
     .values({
       userId: opts.assigneeId,
       kind: "assigned",
-      message: `Assigned you ${opts.issueKey} — ${opts.issueTitle}`,
+      message,
       projectId: opts.projectId,
       issueId: opts.issueId,
       actorId: opts.actorId,
     });
+  sendPushToUsers([opts.assigneeId], {
+    title: opts.issueKey,
+    body: message,
+    tag: `issue:${opts.issueId}`,
+  }).catch(() => {});
 }

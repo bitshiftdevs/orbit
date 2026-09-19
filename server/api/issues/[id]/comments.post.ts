@@ -11,6 +11,7 @@ import {
 } from "../../../db/schema";
 import { assertMember } from "../../../lib/access";
 import { notifyMentions } from "../../../lib/mentions";
+import { sendPushToUsers } from "../../../lib/push";
 import { dispatch } from "../../../lib/webhooks";
 import { requireAuth } from "../../../middleware/auth";
 
@@ -66,17 +67,23 @@ export default defineEventHandler(async (event) => {
   }).catch(() => {});
 
   if (existing.assigneeId && existing.assigneeId !== user.id) {
+    const message = `New comment on ${key}`;
     await db
       .insert(notifications)
       .values({
         userId: existing.assigneeId,
         kind: "comment" as const,
-        message: `New comment on ${key}`,
+        message,
         projectId: existing.projectId,
         issueId: existing.id,
         actorId: user.id,
       })
       .catch(() => {});
+    sendPushToUsers([existing.assigneeId], {
+      title: key,
+      body: `${user.name}: ${body.body.slice(0, 140)}`,
+      tag: `issue:${existing.id}`,
+    }).catch(() => {});
   }
 
   dispatch(existing.projectId, "issue.commented", {

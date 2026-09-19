@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ApiTokensSection from "~/components/settings/ApiTokensSection.vue";
 import MfaSection from "~/components/settings/MfaSection.vue";
+import NotificationsSection from "~/components/settings/NotificationsSection.vue";
 import ProfileSection from "~/components/settings/ProfileSection.vue";
 </script>
 
@@ -14,6 +15,7 @@ import ProfileSection from "~/components/settings/ProfileSection.vue";
 		<div class="p-8 max-w-3xl space-y-8">
 			<ProfileSection />
 			<MfaSection />
+			<NotificationsSection />
 			<ApiTokensSection />
 		</div>
 	</div>
