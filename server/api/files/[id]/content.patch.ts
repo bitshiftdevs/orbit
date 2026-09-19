@@ -5,8 +5,15 @@ import { User, files } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
 import { audit } from "~~/server/lib/audit";
 import { sha256Hex } from "~~/server/lib/crypto";
+import { applyTextPatch } from "~~/server/lib/diff";
 import { requireAuth } from "~~/server/middleware/auth";
-const patchSchema = z.object({ content: z.string().max(500_000) });
+
+const MAX_BYTES = 500_000;
+
+const patchSchema = z.object({
+  baseSha256: z.string().length(64),
+  patch: z.string().max(MAX_BYTES),
+});
 
 export default defineEventHandler(async (event) => {
   await requireAuth(event);
@@ -37,7 +44,27 @@ export default defineEventHandler(async (event) => {
     });
 
   const body = await readValidatedBody(event, patchSchema.parse);
-  const buf = Buffer.from(body.content, "utf-8");
+
+  if (body.baseSha256 !== existing.sha256)
+    throw createError({
+      statusCode: 409,
+      statusMessage: "file changed, refresh and retry",
+    });
+
+  const current = existing.data.toString("utf-8");
+  const result = applyTextPatch(current, body.patch);
+  if (!result.ok)
+    throw createError({
+      statusCode: result.reason === "invalid_patch" ? 400 : 409,
+      statusMessage:
+        result.reason === "invalid_patch"
+          ? "invalid patch"
+          : "patch failed to apply",
+    });
+
+  const buf = Buffer.from(result.text, "utf-8");
+  if (buf.byteLength > MAX_BYTES)
+    throw createError({ statusCode: 413, statusMessage: "content too large" });
 
   const [row] = await db
     .update(files)

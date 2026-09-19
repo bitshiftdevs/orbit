@@ -1,8 +1,9 @@
 <script setup lang="ts">
 definePageMeta({ name: "project-files" });
 import { inject, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
-import { Download, Eye, File as FileIcon, RefreshCw, Trash2, Upload } from "lucide-vue-next";
+import { Download, Eye, File as FileIcon, FilePlus, RefreshCw, Trash2, Upload } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
+import Dialog from "~/components/ui/Dialog.vue";
 import Skeleton from "~/components/ui/Skeleton.vue";
 import FilePreview from "~/components/files/FilePreview.vue";
 import { api } from "~/lib/api";
@@ -114,6 +115,37 @@ function onFileSaved(updated: FileRow) {
 	const idx = files.value.findIndex((f) => f.id === updated.id);
 	if (idx >= 0) files.value[idx] = { ...files.value[idx], ...updated };
 }
+
+const createOpen = ref(false);
+const createName = ref("");
+const createSaving = ref(false);
+
+function openCreate() {
+	createName.value = "";
+	createOpen.value = true;
+}
+
+async function createMarkdown() {
+	if (!project.value || createSaving.value) return;
+	const raw = createName.value.trim();
+	if (!raw) return;
+	const name = /\.md$|\.markdown$/i.test(raw) ? raw : `${raw}.md`;
+	createSaving.value = true;
+	try {
+		const { file: row } = await api.post<{ file: FileRow }>(
+			`/projects/${project.value.key}/files/markdown`,
+			{ name, content: "" },
+		);
+		files.value.unshift(row);
+		createOpen.value = false;
+		previewing.value = row;
+		notify("Created", "success");
+	} catch (err) {
+		notifyError(err);
+	} finally {
+		createSaving.value = false;
+	}
+}
 </script>
 
 <template>
@@ -131,6 +163,10 @@ function onFileSaved(updated: FileRow) {
 				>
 					<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
 				</button>
+				<Button variant="outline" size="sm" @click="openCreate">
+					<FilePlus class="h-3.5 w-3.5" />
+					New markdown
+				</Button>
 				<Button variant="primary" size="sm" :loading="uploading" @click="inputRef?.click()">
 					<Upload class="h-3.5 w-3.5" />
 					Upload
@@ -229,4 +265,38 @@ function onFileSaved(updated: FileRow) {
 		@close="previewing = null"
 		@saved="onFileSaved"
 	/>
+
+	<Dialog
+		:open="createOpen"
+		title="New markdown file"
+		description="Give the file a name — .md is added if you leave it off."
+		@update:open="createOpen = $event"
+	>
+		<form class="px-5 py-4 space-y-3" @submit.prevent="createMarkdown">
+			<label class="block text-xs text-[var(--color-fg-muted)]">Filename</label>
+			<input
+				v-model="createName"
+				type="text"
+				maxlength="255"
+				autofocus
+				placeholder="notes.md"
+				class="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]"
+				:disabled="createSaving"
+			/>
+		</form>
+		<template #footer>
+			<Button variant="ghost" size="sm" :disabled="createSaving" @click="createOpen = false">
+				Cancel
+			</Button>
+			<Button
+				variant="primary"
+				size="sm"
+				:loading="createSaving"
+				:disabled="!createName.trim()"
+				@click="createMarkdown"
+			>
+				Create
+			</Button>
+		</template>
+	</Dialog>
 </template>
