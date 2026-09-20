@@ -108,7 +108,7 @@ function newIn(status: IssueStatus) {
 
 <template>
 	<div class="h-full flex flex-col">
-		<div class="flex items-center justify-between px-8 py-3 border-b border-[var(--color-border)]">
+		<div class="flex items-center justify-between gap-3 px-4 sm:px-8 py-3 border-b border-[var(--color-border)] flex-wrap">
 			<div class="flex items-center gap-3">
 				<span class="text-sm font-medium text-[var(--color-fg)]">
 					{{ activeSprint ? activeSprint.name : "All issues" }}
@@ -134,7 +134,7 @@ function newIn(status: IssueStatus) {
 				</Button>
 			</div>
 		</div>
-		<div v-if="project" class="flex-1 overflow-hidden px-8 py-4">
+		<div v-if="project" class="flex-1 overflow-hidden px-4 sm:px-8 py-4">
 			<div v-if="initialLoading" class="flex gap-3 overflow-x-auto pb-2 h-full">
 				<section
 					v-for="status in BOARD_STATUSES"

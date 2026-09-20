@@ -41,7 +41,7 @@ function toneFor(action: string) {
 
 <template>
 	<div class="h-full flex flex-col overflow-hidden">
-		<div class="px-8 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
+		<div class="px-4 sm:px-8 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
 			<span class="text-xs text-[var(--color-fg-subtle)]">last 200 events in this project</span>
 			<button
 				class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)] disabled:opacity-40"
@@ -52,7 +52,7 @@ function toneFor(action: string) {
 				<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
 			</button>
 		</div>
-		<div class="flex-1 overflow-y-auto p-8">
+		<div class="flex-1 overflow-y-auto p-4 sm:p-8">
 			<div class="card divide-y divide-[var(--color-border)]">
 				<div
 					v-for="e in entries"

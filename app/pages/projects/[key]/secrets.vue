@@ -186,7 +186,7 @@ async function downloadDotEnv() {
 
 <template>
 	<div class="h-full flex flex-col overflow-hidden">
-		<div class="px-8 py-3 border-b border-[var(--color-border)] text-xs text-[var(--color-fg-subtle)] flex items-center justify-between">
+		<div class="px-4 sm:px-8 py-3 border-b border-[var(--color-border)] text-xs text-[var(--color-fg-subtle)] flex items-center justify-between">
 			<div class="flex items-center gap-2">
 				<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dot-pulse" />
 				Encrypted at rest with AES-256-GCM · reveal events are audit-logged
@@ -200,7 +200,7 @@ async function downloadDotEnv() {
 				<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
 			</button>
 		</div>
-		<div class="flex-1 overflow-y-auto px-8 py-6 space-y-10">
+		<div class="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-10">
 			<section>
 				<div class="flex items-center justify-between mb-3">
 					<h2 class="text-sm font-semibold">Secrets</h2>

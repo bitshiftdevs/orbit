@@ -140,7 +140,7 @@ function pickPreset(p: WebhookPreset) {
 
 <template>
 	<div class="h-full flex flex-col overflow-hidden">
-		<div class="flex items-center justify-between px-8 py-3 border-b border-[var(--color-border)]">
+		<div class="flex items-center justify-between px-4 sm:px-8 py-3 border-b border-[var(--color-border)] gap-3 flex-wrap">
 			<div class="text-xs text-[var(--color-fg-subtle)]">
 				{{ hooks.length }} endpoints · HMAC-signed with SHA-256
 			</div>
@@ -160,7 +160,7 @@ function pickPreset(p: WebhookPreset) {
 			</div>
 		</div>
 
-		<div class="flex-1 overflow-y-auto p-8 space-y-3">
+		<div class="flex-1 overflow-y-auto p-4 sm:p-8 space-y-3">
 			<div v-for="h in hooks" :key="h.id" class="card">
 				<div class="p-4 flex items-start gap-3">
 					<div

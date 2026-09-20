@@ -223,7 +223,7 @@ async function applyBulk(patch: BulkIssuePatch) {
 
 <template>
 	<div class="h-full flex flex-col overflow-hidden">
-		<div class="flex items-center gap-2 px-8 py-3 border-b border-[var(--color-border)] flex-wrap">
+		<div class="flex items-center gap-2 px-4 sm:px-8 py-3 border-b border-[var(--color-border)] flex-wrap">
 			<Input
 				v-model="filter.text"
 				placeholder="Search title or key…"
@@ -283,7 +283,7 @@ async function applyBulk(patch: BulkIssuePatch) {
 
 		<div
 			v-if="savedFilters.length"
-			class="flex items-center gap-2 px-8 py-2 border-b border-[var(--color-border)] overflow-x-auto"
+			class="flex items-center gap-2 px-4 sm:px-8 py-2 border-b border-[var(--color-border)] overflow-x-auto"
 		>
 			<span class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)] shrink-0">
 				Saved
@@ -302,7 +302,7 @@ async function applyBulk(patch: BulkIssuePatch) {
 
 		<div
 			v-if="selected.size"
-			class="flex items-center gap-3 px-8 py-2 border-b border-[var(--color-border)] bg-[var(--color-accent-soft)]"
+			class="flex items-center gap-3 px-4 sm:px-8 py-2 border-b border-[var(--color-border)] bg-[var(--color-accent-soft)]"
 		>
 			<ListChecks class="h-4 w-4 text-[var(--color-accent)]" />
 			<span class="text-sm text-[var(--color-fg)]">{{ selected.size }} selected</span>
@@ -316,7 +316,7 @@ async function applyBulk(patch: BulkIssuePatch) {
 			</button>
 		</div>
 
-		<div class="flex-1 overflow-y-auto px-8 py-4">
+		<div class="flex-1 overflow-y-auto px-4 sm:px-8 py-4">
 			<div class="card divide-y divide-[var(--color-border)]">
 				<div class="px-4 py-2 flex items-center gap-3 text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
 					<input

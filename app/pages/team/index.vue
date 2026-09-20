@@ -61,7 +61,7 @@ const canInvite = () => session.user?.role !== "member";
 
 <template>
 	<div class="flex-1 overflow-y-auto">
-		<header class="border-b border-[var(--color-border)] px-8 py-5 flex items-center justify-between">
+		<header class="border-b border-[var(--color-border)] px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-3">
 			<div>
 				<h1 class="text-xl font-semibold tracking-tight">Team</h1>
 				<p class="text-xs text-[var(--color-fg-subtle)] mt-1">
@@ -84,7 +84,7 @@ const canInvite = () => session.user?.role !== "member";
 			</div>
 		</header>
 
-		<div class="p-8 space-y-8">
+		<div class="p-4 sm:p-8 space-y-8">
 			<section>
 				<h2 class="text-xs uppercase tracking-widest text-[var(--color-fg-subtle)] font-semibold mb-3">
 					Members

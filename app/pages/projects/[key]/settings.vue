@@ -65,7 +65,7 @@ async function save() {
 </script>
 
 <template>
-	<div class="h-full overflow-y-auto px-8 py-6 max-w-xl">
+	<div class="h-full overflow-y-auto px-4 sm:px-8 py-6 max-w-xl">
 		<h2 class="text-sm font-semibold mb-6">Project settings</h2>
 		<div class="space-y-5">
 			<label class="block space-y-1">

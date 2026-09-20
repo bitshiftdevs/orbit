@@ -110,7 +110,7 @@ async function toggleBurndown(s: Sprint) {
 
 <template>
 	<div class="h-full flex flex-col overflow-hidden">
-		<div class="flex items-center justify-between px-8 py-3 border-b border-[var(--color-border)]">
+		<div class="flex items-center justify-between px-4 sm:px-8 py-3 border-b border-[var(--color-border)]">
 			<div class="text-xs text-[var(--color-fg-subtle)]">
 				{{ sprints.length }} sprints
 			</div>
@@ -135,7 +135,7 @@ async function toggleBurndown(s: Sprint) {
 		</div>
 
 		<!-- Analytics panel -->
-		<div v-if="analyticsOpen" class="px-8 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] space-y-4">
+		<div v-if="analyticsOpen" class="px-4 sm:px-8 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] space-y-4">
 			<VelocityChart :sprints="velocity" />
 			<div v-if="cycleTime.length" class="card p-4">
 				<div class="text-xs text-[var(--color-fg-subtle)] uppercase tracking-widest mb-3">Cycle time (avg days to completion)</div>
@@ -156,7 +156,7 @@ async function toggleBurndown(s: Sprint) {
 			</div>
 		</div>
 
-		<div class="flex-1 overflow-y-auto px-8 py-4 space-y-3">
+		<div class="flex-1 overflow-y-auto px-4 sm:px-8 py-4 space-y-3">
 			<div v-for="s in sprints" :key="s.id" class="card p-4">
 				<div class="flex items-start justify-between gap-4">
 					<div class="min-w-0 flex-1">

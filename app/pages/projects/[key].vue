@@ -53,7 +53,7 @@ const tabs = [
 	<div class="flex-1 flex flex-col overflow-hidden">
 		<header
 			v-if="project"
-			class="border-b border-[var(--color-border)] px-8 pt-5"
+			class="border-b border-[var(--color-border)] px-4 sm:px-8 pt-4 sm:pt-5"
 		>
 			<div class="flex items-center gap-3">
 				<div
@@ -101,12 +101,12 @@ const tabs = [
 					</a>
 				</div>
 			</div>
-			<nav class="flex items-center gap-1 mt-5 -mb-px">
+			<nav class="flex items-center gap-1 mt-4 sm:mt-5 -mb-px overflow-x-auto whitespace-nowrap">
 				<NuxtLink
 					v-for="t in tabs"
 					:key="t.name"
 					:to="{ name: t.name, params: { key: project.key } }"
-					class="px-3 py-2 text-sm text-[var(--color-fg-muted)] border-b-2 border-transparent hover:text-[var(--color-fg)] transition-colors"
+					class="px-3 py-2 text-sm text-[var(--color-fg-muted)] border-b-2 border-transparent hover:text-[var(--color-fg)] transition-colors shrink-0"
 					active-class=""
 					exact-active-class="text-[var(--color-fg)] border-[var(--color-accent)]"
 				>

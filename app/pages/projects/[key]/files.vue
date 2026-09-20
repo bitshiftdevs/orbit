@@ -150,7 +150,7 @@ async function createMarkdown() {
 
 <template>
 	<div class="h-full flex flex-col overflow-hidden">
-		<div class="px-8 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
+		<div class="px-4 sm:px-8 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-3 flex-wrap">
 			<div class="text-xs text-[var(--color-fg-subtle)]">
 				{{ files.length }} files · 5 MB per-file cap
 			</div>
@@ -181,7 +181,7 @@ async function createMarkdown() {
 			/>
 		</div>
 
-		<div class="flex-1 overflow-y-auto p-8 space-y-4">
+		<div class="flex-1 overflow-y-auto p-4 sm:p-8 space-y-4">
 			<div
 				class="card border-dashed py-10 text-center text-sm text-[var(--color-fg-subtle)] cursor-pointer transition-colors"
 				:class="{ 'border-[var(--color-accent)] bg-[var(--color-accent-soft)]': dragOver }"

@@ -64,7 +64,7 @@ async function submit() {
 <template>
 	<div class="flex-1 overflow-y-auto">
 		<header
-			class="border-b border-[var(--color-border)] px-8 py-5 flex items-center justify-between"
+			class="border-b border-[var(--color-border)] px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-3"
 		>
 			<div>
 				<h1 class="text-xl font-semibold tracking-tight">Projects</h1>
@@ -78,7 +78,7 @@ async function submit() {
 			</Button>
 		</header>
 
-		<div class="p-8">
+		<div class="p-4 sm:p-8">
 			<div class="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
 				<template v-if="projects.loading && !projects.items.length">
 					<div v-for="n in 6" :key="`sk-${n}`" class="card p-5 flex flex-col gap-3">

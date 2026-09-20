@@ -7,12 +7,12 @@ import ProfileSection from "~/components/settings/ProfileSection.vue";
 
 <template>
 	<div class="flex-1 overflow-y-auto">
-		<header class="border-b border-[var(--color-border)] px-8 py-5">
+		<header class="border-b border-[var(--color-border)] px-4 sm:px-8 py-4 sm:py-5">
 			<h1 class="text-xl font-semibold tracking-tight">Settings</h1>
 			<p class="text-xs text-[var(--color-fg-subtle)] mt-1">Profile · security · integrations</p>
 		</header>
 
-		<div class="p-8 max-w-3xl space-y-8">
+		<div class="p-4 sm:p-8 max-w-3xl space-y-8">
 			<ProfileSection />
 			<MfaSection />
 			<NotificationsSection />

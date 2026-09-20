@@ -52,10 +52,10 @@ onMounted(load);
 <template>
   <div class="flex-1 overflow-y-auto">
     <header
-      class="border-b border-[var(--color-border)] px-8 py-5 flex items-center justify-between"
+      class="border-b border-[var(--color-border)] px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-3"
     >
-      <div>
-        <h1 class="text-xl font-semibold tracking-tight">
+      <div class="min-w-0">
+        <h1 class="text-lg sm:text-xl font-semibold tracking-tight truncate">
           Hey {{ session.user?.name?.split(" ")[0] ?? "there" }}
           <span class="text-[var(--color-fg-subtle)] font-normal ml-1"
             >— welcome back.</span
@@ -87,7 +87,7 @@ onMounted(load);
       </div>
     </header>
 
-    <div class="p-8 grid gap-8 grid-cols-[1fr_260px]">
+    <div class="p-4 sm:p-8 grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-[1fr_260px]">
       <section>
         <h2
           class="text-xs uppercase tracking-widest text-[var(--color-fg-subtle)] font-semibold mb-3"

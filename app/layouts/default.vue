@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
+import { useRoute } from "nuxt/app";
 import OrbitLogo from "~/components/OrbitLogo.vue";
 import {
   LogOut,
+  Menu,
   Moon,
   Search,
   Settings,
@@ -10,6 +12,7 @@ import {
   Users,
   FolderKanban,
   LayoutDashboard,
+  X,
 } from "lucide-vue-next";
 import Avatar from "~/components/ui/Avatar.vue";
 import CommandPalette from "~/components/CommandPalette.vue";
@@ -26,9 +29,13 @@ const session = useSession();
 const projects = useProjects();
 const notifications = useNotifications();
 const { isLight, toggle: toggleTheme } = useTheme();
+const route = useRoute();
 
 const paletteOpen = ref(false);
 const shortcutsOpen = ref(false);
+const mobileOpen = ref(false);
+
+watch(() => route.fullPath, () => { mobileOpen.value = false; });
 
 if (import.meta.client) {
   projects.ensureLoaded();
@@ -50,9 +57,45 @@ async function logout() {
 </script>
 
 <template>
-  <div class="h-full grid grid-cols-[240px_1fr]">
+  <div class="h-full flex flex-col md:grid md:grid-cols-[240px_1fr]">
+    <header
+      class="md:hidden flex items-center gap-2 h-12 px-3 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]"
+    >
+      <button
+        type="button"
+        class="p-2 -ml-1 rounded text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)]"
+        aria-label="Open menu"
+        @click="mobileOpen = true"
+      >
+        <Menu class="h-5 w-5" />
+      </button>
+      <div
+        class="h-6 w-6 rounded-md grid place-items-center bg-[var(--color-accent)] shadow-[0_0_20px_var(--color-accent-glow)]"
+      >
+        <OrbitLogo class="h-4 w-4" />
+      </div>
+      <span class="text-sm font-semibold tracking-tight">Orbit</span>
+      <div class="ml-auto flex items-center gap-1">
+        <NotificationsBell />
+        <button
+          class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)]"
+          :title="isLight ? 'Switch to dark mode' : 'Switch to light mode'"
+          @click="toggleTheme"
+        >
+          <component :is="isLight ? Moon : Sun" class="h-4 w-4" />
+        </button>
+      </div>
+    </header>
+
+    <div
+      v-if="mobileOpen"
+      class="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+      @click="mobileOpen = false"
+    />
+
     <aside
-      class="h-full flex flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)]"
+      class="fixed md:static inset-y-0 left-0 z-50 w-[260px] md:w-auto h-full flex flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)] transition-transform duration-200 ease-out md:transition-none"
+      :class="mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
     >
       <div
         class="px-4 py-4 flex items-center gap-2 border-b border-[var(--color-border)]"
@@ -62,7 +105,7 @@ async function logout() {
         >
           <OrbitLogo class="h-5 w-5" />
         </div>
-        <div>
+        <div class="flex-1 min-w-0">
           <div class="text-sm font-semibold tracking-tight">Orbit</div>
           <div
             class="text-[10px] text-[var(--color-fg-subtle)] uppercase tracking-widest"
@@ -70,6 +113,14 @@ async function logout() {
             BitShift
           </div>
         </div>
+        <button
+          type="button"
+          class="md:hidden p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)]"
+          aria-label="Close menu"
+          @click="mobileOpen = false"
+        >
+          <X class="h-4 w-4" />
+        </button>
       </div>
 
       <nav class="flex-1 overflow-y-auto py-2 text-sm">
@@ -138,7 +189,7 @@ async function logout() {
       <button
         type="button"
         class="mx-3 mb-3 flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-xs text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)]"
-        @click="paletteOpen = true"
+        @click="paletteOpen = true; mobileOpen = false"
       >
         <Search class="h-3.5 w-3.5" />
         <span class="flex-1 text-left">Search…</span>
@@ -167,9 +218,9 @@ async function logout() {
             @{{ session.user?.handle }}
           </div>
         </div>
-        <NotificationsBell />
+        <NotificationsBell class="hidden md:inline-flex" />
         <button
-          class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)]"
+          class="hidden md:inline-flex p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel)]"
           :title="isLight ? 'Switch to dark mode' : 'Switch to light mode'"
           @click="toggleTheme"
         >
@@ -192,7 +243,7 @@ async function logout() {
       </div>
     </aside>
 
-    <main class="h-full overflow-hidden flex flex-col">
+    <main class="flex-1 min-h-0 md:h-full overflow-hidden flex flex-col">
       <slot />
     </main>
 
