@@ -171,6 +171,7 @@ function newIn(status: IssueStatus) {
 				v-else
 				:issues="boardIssues"
 				:project-key="project.key"
+				:members="members"
 				@open="(id) => (selectedIssueId = id)"
 				@changed="onChanged"
 				@new-in="newIn"

@@ -3,12 +3,14 @@ import { computed, ref } from "vue";
 import type { Issue, IssueStatus } from "~/lib/api";
 import { api } from "~/lib/api";
 import { notifyError } from "~/lib/notify";
+import type { SessionUser } from "~/types/domain";
 import IssueCard from "./IssueCard.vue";
 import { BOARD_STATUSES, STATUS_META } from "./meta";
 
 const props = defineProps<{
 	issues: Issue[];
 	projectKey: string;
+	members?: Array<Pick<SessionUser, "id" | "name" | "handle" | "avatarUrl" | "accentColor">>;
 }>();
 
 const emit = defineEmits<{
@@ -125,7 +127,9 @@ async function onDrop(e: DragEvent, status: IssueStatus, index: number | null) {
 					<IssueCard
 						:issue="issue"
 						:project-key="projectKey"
+						:members="members"
 						@open="(id) => emit('open', id)"
+						@changed="(u) => emit('changed', u)"
 					/>
 				</div>
 				<div
