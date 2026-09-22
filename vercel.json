@@ -1,4 +1,10 @@
 {
   "installCommand": "bun install",
-  "buildCommand": "bun run db:migrate && nuxt build"
+  "buildCommand": "bun run db:migrate && nuxt build",
+  "crons": [
+    {
+      "path": "/api/cron/cleanup",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }
