@@ -30,6 +30,7 @@ const form = ref<{
 	events: string[];
 	botToken: string;
 	chatId: string;
+	messageThreadId: string;
 }>({
 	name: "",
 	url: "",
@@ -37,6 +38,7 @@ const form = ref<{
 	events: ["issue.created", "issue.status_changed"],
 	botToken: "",
 	chatId: "",
+	messageThreadId: "",
 });
 
 const ALL_EVENTS = [
@@ -80,7 +82,9 @@ async function create() {
 	};
 	if (f.preset === "telegram") {
 		body.url = f.chatId;
-		body.config = { botToken: f.botToken, chatId: f.chatId };
+		const cfg: Record<string, string> = { botToken: f.botToken, chatId: f.chatId };
+		if (f.messageThreadId.trim()) cfg.messageThreadId = f.messageThreadId.trim();
+		body.config = cfg;
 	} else {
 		body.url = f.url;
 	}
@@ -99,6 +103,7 @@ async function create() {
 			events: ["issue.created", "issue.status_changed"],
 			botToken: "",
 			chatId: "",
+			messageThreadId: "",
 		};
 		notify("Webhook created", "success");
 	} catch (err) {
@@ -314,6 +319,15 @@ function pickPreset(p: WebhookPreset) {
 						<Input v-model="form.chatId" placeholder="-1001234567890 or @channel" />
 						<p class="text-[11px] text-[var(--color-fg-subtle)]">
 							For a group, invite the bot first. Use <span class="mono">@userinfobot</span> to find IDs.
+						</p>
+					</div>
+					<div class="space-y-1">
+						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
+							Topic ID <span class="normal-case text-[var(--color-fg-subtle)]">(optional)</span>
+						</label>
+						<Input v-model="form.messageThreadId" placeholder="e.g. 5 — leave blank for General" />
+						<p class="text-[11px] text-[var(--color-fg-subtle)]">
+							For forum groups. Right-click a message in the topic → Copy Message Link. In <span class="mono">https://t.me/c/&lt;chat&gt;/&lt;topic&gt;/&lt;msg&gt;</span> the middle number is the topic ID.
 						</p>
 					</div>
 				</template>

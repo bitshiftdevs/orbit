@@ -104,6 +104,7 @@ async function deliverTelegram(
   const db = getDb();
   const token = hook.config?.botToken;
   const chatId = hook.config?.chatId ?? hook.url;
+  const threadId = hook.config?.messageThreadId;
   let status: number | null = null;
   let error: string | null = null;
   if (!token || !chatId) {
@@ -111,11 +112,17 @@ async function deliverTelegram(
   } else {
     const summary = summarize(event, payload);
     const text = `*${escapeMd(summary.title)}*\n${escapeMd(summary.body)}\n_${event}_`;
+    const body: Record<string, unknown> = {
+      chat_id: chatId,
+      text,
+      parse_mode: "MarkdownV2",
+    };
+    if (threadId) body.message_thread_id = Number(threadId);
     try {
       const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(8_000),
       });
       status = res.status;

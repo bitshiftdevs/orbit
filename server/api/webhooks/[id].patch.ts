@@ -27,6 +27,7 @@ const updateSchema = z
       .object({
         botToken: z.string().min(1).optional(),
         chatId: z.string().min(1).optional(),
+        messageThreadId: z.string().min(1).optional(),
       })
       .partial()
       .nullable()
