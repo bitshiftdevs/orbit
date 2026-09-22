@@ -166,18 +166,41 @@ async function deleteEnv(v: EnvVar) {
 	}
 }
 
+async function fetchDotEnv(): Promise<Blob | null> {
+	if (!project.value) return null;
+	return api.get<Blob>(
+		`/projects/${project.value.key}/env/${activeScope.value}/dotenv`,
+	);
+}
+
 async function downloadDotEnv() {
 	if (!project.value) return;
 	try {
-		const blob = await api.get<Blob>(
-			`/projects/${project.value.key}/env/${activeScope.value}/dotenv`,
-		);
+		const blob = await fetchDotEnv();
+		if (!blob) return;
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
 		a.href = url;
 		a.download = `${project.value.key.toLowerCase()}.${activeScope.value}.env`;
 		a.click();
 		URL.revokeObjectURL(url);
+	} catch (err) {
+		notifyError(err);
+	}
+}
+
+async function copyDotEnv() {
+	if (!project.value) return;
+	try {
+		const blob = await fetchDotEnv();
+		if (!blob) return;
+		const text = await blob.text();
+		if (!text) {
+			notify(`No vars in ${activeScope.value}`, "info");
+			return;
+		}
+		await navigator.clipboard.writeText(text);
+		notify(`Copied ${activeScope.value} .env`, "success");
 	} catch (err) {
 		notifyError(err);
 	}
@@ -283,6 +306,10 @@ async function downloadDotEnv() {
 						<Button variant="outline" size="sm" @click="ciDialog = true">
 							<Github class="h-3.5 w-3.5" />
 							Use in CI
+						</Button>
+						<Button variant="outline" size="sm" @click="copyDotEnv">
+							<Copy class="h-3.5 w-3.5" />
+							Copy all
 						</Button>
 						<Button variant="outline" size="sm" @click="downloadDotEnv">
 							<Download class="h-3.5 w-3.5" />
