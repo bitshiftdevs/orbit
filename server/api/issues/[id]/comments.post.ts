@@ -90,6 +90,7 @@ export default defineEventHandler(async (event) => {
     key,
     title: existing.title,
     actor: user.handle,
+    body: body.body,
     preview: body.body.slice(0, 240),
   });
 

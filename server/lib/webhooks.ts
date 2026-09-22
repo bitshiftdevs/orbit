@@ -178,6 +178,13 @@ function discordPayload(event: string, payload: Record<string, unknown>) {
 
 function summarize(event: string, payload: Record<string, unknown>) {
   const p = payload as any;
+  if (event === "issue.commented") {
+    const preview = typeof p.preview === "string" ? p.preview : "";
+    return {
+      title: `${p.key ?? "issue"} — ${p.title ?? ""}`.trim(),
+      body: `${p.actor ? `@${p.actor}` : "someone"} commented${preview ? `:\n${preview}` : ""}`,
+    };
+  }
   if (event.startsWith("issue")) {
     return {
       title: `${p.key ?? "issue"} — ${p.title ?? ""}`.trim(),
