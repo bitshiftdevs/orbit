@@ -111,11 +111,14 @@ async function deliverTelegram(
     error = "telegram webhook missing botToken or chatId";
   } else {
     const summary = summarize(event, payload);
-    const text = `*${escapeMd(summary.title)}*\n${escapeMd(summary.body)}\n_${event}_`;
+    const text =
+      `<b>${escapeHtml(summary.title)}</b>\n` +
+      `${escapeHtml(summary.body)}\n` +
+      `<i>${escapeHtml(event)}</i>`;
     const body: Record<string, unknown> = {
       chat_id: chatId,
       text,
-      parse_mode: "MarkdownV2",
+      parse_mode: "HTML",
     };
     if (threadId) body.message_thread_id = Number(threadId);
     try {
@@ -140,8 +143,8 @@ async function deliverTelegram(
   });
 }
 
-function escapeMd(s: string) {
-  return s.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, (c) => `\\${c}`);
+function escapeHtml(s: string) {
+  return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!));
 }
 
 function slackPayload(event: string, payload: Record<string, unknown>) {
