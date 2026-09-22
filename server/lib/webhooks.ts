@@ -56,6 +56,9 @@ async function deliver(
     body = JSON.stringify(slackPayload(event, payload));
   } else if (hook.preset === "discord") {
     body = JSON.stringify(discordPayload(event, payload));
+  } else if (hook.preset === "telegram") {
+    // Telegram delivery: url stores the chat id; bot token in config.botToken.
+    return deliverTelegram(hook, event, payload, start);
   } else {
     body = JSON.stringify({
       event,
@@ -90,6 +93,48 @@ async function deliver(
     error,
     durationMs: Date.now() - start,
   });
+}
+
+async function deliverTelegram(
+  hook: typeof webhooks.$inferSelect,
+  event: WebhookEvent,
+  payload: Record<string, unknown>,
+  start: number,
+) {
+  const db = getDb();
+  const token = hook.config?.botToken;
+  const chatId = hook.config?.chatId ?? hook.url;
+  let status: number | null = null;
+  let error: string | null = null;
+  if (!token || !chatId) {
+    error = "telegram webhook missing botToken or chatId";
+  } else {
+    const summary = summarize(event, payload);
+    const text = `*${escapeMd(summary.title)}*\n${escapeMd(summary.body)}\n_${event}_`;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
+        signal: AbortSignal.timeout(8_000),
+      });
+      status = res.status;
+      if (!res.ok) error = (await res.text().catch(() => "")).slice(0, 500);
+    } catch (e) {
+      error = String((e as Error).message ?? e).slice(0, 500);
+    }
+  }
+  await db.insert(webhookDeliveries).values({
+    webhookId: hook.id,
+    event,
+    statusCode: status,
+    error,
+    durationMs: Date.now() - start,
+  });
+}
+
+function escapeMd(s: string) {
+  return s.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, (c) => `\\${c}`);
 }
 
 function slackPayload(event: string, payload: Record<string, unknown>) {

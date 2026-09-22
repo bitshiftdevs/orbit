@@ -20,9 +20,17 @@ const EVENTS = [
 const updateSchema = z
   .object({
     name: z.string().min(1).max(120).optional(),
-    url: z.string().url().optional(),
+    url: z.string().min(1).optional(),
     events: z.array(z.enum(EVENTS)).optional(),
-    preset: z.enum(["generic", "slack", "discord"]).optional(),
+    preset: z.enum(["generic", "slack", "discord", "telegram"]).optional(),
+    config: z
+      .object({
+        botToken: z.string().min(1).optional(),
+        chatId: z.string().min(1).optional(),
+      })
+      .partial()
+      .nullable()
+      .optional(),
     active: z.boolean().optional(),
   })
   .optional();
@@ -43,16 +51,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "webhook not found" });
   await assertMember(user, existing.projectId);
 
-  const body = (await readValidatedBody(event, updateSchema.parse)) ?? {};
-  const parsed = z
-    .object({
-      name: z.string().min(1).max(120).optional(),
-      url: z.string().url().optional(),
-      events: z.array(z.enum(EVENTS)).optional(),
-      preset: z.enum(["generic", "slack", "discord"]).optional(),
-      active: z.boolean().optional(),
-    })
-    .parse(body);
+  const parsed = (await readValidatedBody(event, updateSchema.parse)) ?? {};
 
   const [row] = await db
     .update(webhooks)

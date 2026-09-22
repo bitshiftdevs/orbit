@@ -244,6 +244,7 @@ export type Webhook = {
 	url: string;
 	events: string[];
 	preset: string | null;
+	config: Record<string, string> | null;
 	active: boolean;
 	createdAt: string;
 };

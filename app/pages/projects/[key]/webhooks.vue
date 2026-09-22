@@ -21,18 +21,22 @@ const expandedId = ref<string | null>(null);
 const dialogOpen = ref(false);
 const secretShown = ref<string | null>(null);
 
-type WebhookPreset = "generic" | "slack" | "discord";
+type WebhookPreset = "generic" | "slack" | "discord" | "telegram";
 
 const form = ref<{
 	name: string;
 	url: string;
 	preset: WebhookPreset;
 	events: string[];
+	botToken: string;
+	chatId: string;
 }>({
 	name: "",
 	url: "",
 	preset: "generic",
 	events: ["issue.created", "issue.status_changed"],
+	botToken: "",
+	chatId: "",
 });
 
 const ALL_EVENTS = [
@@ -68,15 +72,34 @@ watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load()
 
 async function create() {
 	if (!project.value) return;
+	const f = form.value;
+	const body: Record<string, unknown> = {
+		name: f.name,
+		preset: f.preset,
+		events: f.events,
+	};
+	if (f.preset === "telegram") {
+		body.url = f.chatId;
+		body.config = { botToken: f.botToken, chatId: f.chatId };
+	} else {
+		body.url = f.url;
+	}
 	try {
 		const { webhook, signingSecret } = await api.post<{
 			webhook: Webhook;
 			signingSecret: string;
-		}>(`/projects/${project.value.key}/webhooks`, form.value);
+		}>(`/projects/${project.value.key}/webhooks`, body);
 		hooks.value.unshift(webhook);
-		secretShown.value = form.value.preset === "generic" ? signingSecret : null;
+		secretShown.value = f.preset === "generic" ? signingSecret : null;
 		dialogOpen.value = false;
-		form.value = { name: "", url: "", preset: "generic", events: ["issue.created", "issue.status_changed"] };
+		form.value = {
+			name: "",
+			url: "",
+			preset: "generic",
+			events: ["issue.created", "issue.status_changed"],
+			botToken: "",
+			chatId: "",
+		};
 		notify("Webhook created", "success");
 	} catch (err) {
 		notifyError(err);
@@ -135,6 +158,7 @@ function pickPreset(p: WebhookPreset) {
 	form.value.preset = p;
 	if (p === "slack") form.value.name = form.value.name || "Slack";
 	if (p === "discord") form.value.name = form.value.name || "Discord";
+	if (p === "telegram") form.value.name = form.value.name || "Telegram";
 }
 </script>
 
@@ -178,6 +202,7 @@ function pickPreset(p: WebhookPreset) {
 							<Badge v-if="!h.active" tone="slate">paused</Badge>
 						</div>
 						<a
+							v-if="h.preset !== 'telegram'"
 							:href="h.url"
 							target="_blank"
 							rel="noopener"
@@ -186,6 +211,12 @@ function pickPreset(p: WebhookPreset) {
 							{{ h.url }}
 							<ExternalLink class="h-3 w-3" />
 						</a>
+						<span
+							v-else
+							class="mono text-[11px] text-[var(--color-fg-subtle)]"
+						>
+							chat {{ h.url }}
+						</span>
 						<div class="flex flex-wrap gap-1 mt-2">
 							<Badge v-for="e in h.events" :key="e" class="mono">{{ e }}</Badge>
 						</div>
@@ -248,9 +279,9 @@ function pickPreset(p: WebhookPreset) {
 
 		<Dialog v-model:open="dialogOpen" title="New webhook" width="520px">
 			<div class="p-5 space-y-4">
-				<div class="grid grid-cols-3 gap-2">
+				<div class="grid grid-cols-4 gap-2">
 					<button
-						v-for="p in ['generic', 'slack', 'discord'] as const"
+						v-for="p in ['generic', 'slack', 'discord', 'telegram'] as const"
 						:key="p"
 						type="button"
 						class="p-3 rounded-md border text-sm capitalize transition-colors"
@@ -266,7 +297,27 @@ function pickPreset(p: WebhookPreset) {
 					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Name</label>
 					<Input v-model="form.name" placeholder="Team channel alerts" />
 				</div>
-				<div class="space-y-1">
+				<template v-if="form.preset === 'telegram'">
+					<div class="space-y-1">
+						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
+							Bot token
+						</label>
+						<Input v-model="form.botToken" placeholder="123456:ABC-DEF..." />
+						<p class="text-[11px] text-[var(--color-fg-subtle)]">
+							Get one from <span class="mono">@BotFather</span> on Telegram.
+						</p>
+					</div>
+					<div class="space-y-1">
+						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
+							Chat ID
+						</label>
+						<Input v-model="form.chatId" placeholder="-1001234567890 or @channel" />
+						<p class="text-[11px] text-[var(--color-fg-subtle)]">
+							For a group, invite the bot first. Use <span class="mono">@userinfobot</span> to find IDs.
+						</p>
+					</div>
+				</template>
+				<div v-else class="space-y-1">
 					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
 						{{ form.preset === "slack" ? "Slack incoming-webhook URL" : form.preset === "discord" ? "Discord webhook URL" : "Endpoint URL" }}
 					</label>

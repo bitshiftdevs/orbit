@@ -485,6 +485,8 @@ export const webhooks = pgTable(
 		signingSecret: text().notNull(),
 		events: jsonb().$type<string[]>().notNull().default(sql`'[]'::jsonb`),
 		preset: varchar({ length: 32 }),
+		// Preset-specific configuration (e.g. Telegram { botToken, chatId }).
+		config: jsonb().$type<Record<string, string>>(),
 		active: boolean().notNull().default(true),
 		createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 	},
