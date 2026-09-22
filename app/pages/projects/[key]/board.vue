@@ -2,16 +2,17 @@
 definePageMeta({ name: "project-board" });
 import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { useRoute, navigateTo } from "nuxt/app";
-import { Plus, RefreshCw } from "lucide-vue-next";
+import { ListChecks, Plus, RefreshCw } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
 import Skeleton from "~/components/ui/Skeleton.vue";
+import BulkEditDialog from "~/components/issue/BulkEditDialog.vue";
 import IssueDrawer from "~/components/issue/IssueDrawer.vue";
 import KanbanBoard from "~/components/issue/KanbanBoard.vue";
 import NewIssueDialog from "~/components/issue/NewIssueDialog.vue";
 import { BOARD_STATUSES, STATUS_META } from "~/components/issue/meta";
 import { useShortcuts } from "~/composables/useShortcuts";
-import { api, type Issue, type IssueStatus, type Project, type SessionUser, type Sprint } from "~/lib/api";
-import { notifyError } from "~/lib/notify";
+import { api, type BulkIssuePatch, type Issue, type IssueStatus, type Project, type SessionUser, type Sprint } from "~/lib/api";
+import { notify, notifyError } from "~/lib/notify";
 
 const project = inject<Ref<Project | null>>("project")!;
 const members = inject<
@@ -37,6 +38,40 @@ const newDialog = ref(false);
 const newStatus = ref<IssueStatus>("todo");
 const refreshing = ref(false);
 const initialLoading = ref(true);
+
+const selected = ref<Set<string>>(new Set());
+const bulkOpen = ref(false);
+
+function toggleSelect(id: string) {
+	const next = new Set(selected.value);
+	if (next.has(id)) next.delete(id);
+	else next.add(id);
+	selected.value = next;
+}
+
+async function applyBulk(patch: BulkIssuePatch) {
+	if (!project.value || !selected.value.size) return;
+	const body: Record<string, unknown> = {};
+	if (patch.status) body.status = patch.status;
+	if (patch.priority) body.priority = patch.priority;
+	if (patch.assigneeId)
+		body.assigneeId = patch.assigneeId === "__unassign__" ? null : patch.assigneeId;
+	if (patch.sprintId)
+		body.sprintId = patch.sprintId === "__none__" ? null : patch.sprintId;
+	if (!Object.keys(body).length) return;
+	try {
+		await api.post<{ updated: number }>(
+			`/projects/${project.value.key}/issues/bulk`,
+			{ ids: [...selected.value], patch: body },
+		);
+		notify(`Updated ${selected.value.size} issues`, "success");
+		selected.value = new Set();
+		bulkOpen.value = false;
+		await load(true);
+	} catch (err) {
+		notifyError(err);
+	}
+}
 
 async function load(force = false) {
 	if (!project.value) return;
@@ -82,6 +117,7 @@ useShortcuts({
 	c: () => newIn("todo"),
 	Escape: () => {
 		if (selectedIssueId.value) selectedIssueId.value = null;
+		else if (selected.value.size) selected.value = new Set();
 	},
 });
 
@@ -134,6 +170,24 @@ function newIn(status: IssueStatus) {
 				</Button>
 			</div>
 		</div>
+		<div
+			v-if="selected.size"
+			class="flex items-center gap-3 px-4 sm:px-8 py-2 border-b border-[var(--color-border)] bg-[var(--color-accent-soft)]"
+		>
+			<ListChecks class="h-4 w-4 text-[var(--color-accent)]" />
+			<span class="text-sm text-[var(--color-fg)]">{{ selected.size }} selected</span>
+			<span class="text-[11px] text-[var(--color-fg-subtle)]">
+				shift/⌘-click to toggle · esc to clear
+			</span>
+			<div class="flex-1" />
+			<Button size="sm" variant="primary" @click="bulkOpen = true">Bulk edit</Button>
+			<button
+				class="text-[11px] text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]"
+				@click="selected = new Set()"
+			>
+				Cancel
+			</button>
+		</div>
 		<div v-if="project" class="flex-1 overflow-hidden px-4 sm:px-8 py-4">
 			<div v-if="initialLoading" class="flex gap-3 overflow-x-auto pb-2 h-full">
 				<section
@@ -172,9 +226,11 @@ function newIn(status: IssueStatus) {
 				:issues="boardIssues"
 				:project-key="project.key"
 				:members="members"
+				:selected="selected"
 				@open="(id) => (selectedIssueId = id)"
 				@changed="onChanged"
 				@new-in="newIn"
+				@toggle-select="toggleSelect"
 			/>
 		</div>
 
@@ -194,6 +250,13 @@ function newIn(status: IssueStatus) {
 			@close="selectedIssueId = null"
 			@updated="onChanged"
 			@deleted="onDeleted"
+		/>
+		<BulkEditDialog
+			v-model:open="bulkOpen"
+			:selected-count="selected.size"
+			:members="members"
+			:sprints="sprints"
+			@apply="applyBulk"
 		/>
 	</div>
 </template>

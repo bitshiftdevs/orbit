@@ -3,7 +3,6 @@ definePageMeta({ name: "project-backlog" });
 import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import { navigateTo } from "nuxt/app";
 import { Bookmark, ListChecks, Plus, RefreshCw, X } from "lucide-vue-next";
-import Avatar from "~/components/ui/Avatar.vue";
 import Button from "~/components/ui/Button.vue";
 import Dialog from "~/components/ui/Dialog.vue";
 import Input from "~/components/ui/Input.vue";
@@ -12,7 +11,10 @@ import Spinner from "~/components/ui/Spinner.vue";
 import BulkEditDialog from "~/components/issue/BulkEditDialog.vue";
 import IssueDrawer from "~/components/issue/IssueDrawer.vue";
 import NewIssueDialog from "~/components/issue/NewIssueDialog.vue";
-import { PRIORITY_META, STATUS_META, TYPE_META } from "~/components/issue/meta";
+import AssigneePicker from "~/components/issue/inline/AssigneePicker.vue";
+import PriorityPicker from "~/components/issue/inline/PriorityPicker.vue";
+import StatusPicker from "~/components/issue/inline/StatusPicker.vue";
+import TypePicker from "~/components/issue/inline/TypePicker.vue";
 import { useShortcuts } from "~/composables/useShortcuts";
 import { api } from "~/lib/api";
 import type {
@@ -196,6 +198,16 @@ function toggleAll() {
 	}
 }
 
+async function patchRow(row: Issue, body: Record<string, unknown>) {
+	try {
+		const { issue: updated } = await api.patch<{ issue: Issue }>(`/issues/${row.id}`, body);
+		const idx = issues.value.findIndex((x) => x.id === row.id);
+		if (idx >= 0) issues.value[idx] = { ...issues.value[idx], ...updated };
+	} catch (err) {
+		notifyError(err);
+	}
+}
+
 async function applyBulk(patch: BulkIssuePatch) {
 	if (!project.value || !selected.value.size) return;
 	const body: Record<string, unknown> = {};
@@ -354,10 +366,9 @@ async function applyBulk(patch: BulkIssuePatch) {
 						class="accent-[var(--color-accent)]"
 						@change="selected.has(i.id) ? selected.delete(i.id) : selected.add(i.id); selected = new Set(selected)"
 					/>
-					<component
-						:is="TYPE_META[i.type].icon"
-						class="h-3.5 w-3.5 shrink-0"
-						:class="TYPE_META[i.type].text"
+					<TypePicker
+						:model-value="i.type"
+						@update:model-value="(v) => patchRow(i, { type: v })"
 					/>
 					<button
 						class="mono text-[11px] text-[var(--color-fg-subtle)] w-16 shrink-0 text-left"
@@ -371,15 +382,13 @@ async function applyBulk(patch: BulkIssuePatch) {
 					>
 						{{ i.title }}
 					</button>
-					<component
-						:is="STATUS_META[i.status].icon"
-						class="h-3.5 w-3.5 shrink-0"
-						:class="STATUS_META[i.status].text"
+					<StatusPicker
+						:model-value="i.status"
+						@update:model-value="(v) => patchRow(i, { status: v })"
 					/>
-					<component
-						:is="PRIORITY_META[i.priority].icon"
-						class="h-3.5 w-3.5 shrink-0"
-						:class="PRIORITY_META[i.priority].text"
+					<PriorityPicker
+						:model-value="i.priority"
+						@update:model-value="(v) => patchRow(i, { priority: v })"
 					/>
 					<span
 						v-if="i.storyPoints != null"
@@ -387,14 +396,12 @@ async function applyBulk(patch: BulkIssuePatch) {
 					>
 						{{ i.storyPoints }}
 					</span>
-					<Avatar
-						v-if="i.assignee"
-						:name="i.assignee.name"
-						:src="i.assignee.avatarUrl"
-						:color="i.assignee.accentColor"
-						size="xs"
+					<AssigneePicker
+						:model-value="i.assigneeId ?? null"
+						:assignee="i.assignee"
+						:members="members"
+						@update:model-value="(v) => patchRow(i, { assigneeId: v })"
 					/>
-					<div v-else class="h-5 w-5 rounded-full border border-dashed border-[var(--color-border-strong)]" />
 				</div>
 				<div
 					v-if="!initialLoading && !filtered.length"

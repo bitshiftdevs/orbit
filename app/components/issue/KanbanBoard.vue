@@ -11,12 +11,14 @@ const props = defineProps<{
 	issues: Issue[];
 	projectKey: string;
 	members?: Array<Pick<SessionUser, "id" | "name" | "handle" | "avatarUrl" | "accentColor">>;
+	selected?: Set<string>;
 }>();
 
 const emit = defineEmits<{
 	open: [id: string];
 	changed: [issue: Issue];
 	newIn: [status: IssueStatus];
+	toggleSelect: [id: string];
 }>();
 
 const dragging = ref<string | null>(null);
@@ -128,8 +130,10 @@ async function onDrop(e: DragEvent, status: IssueStatus, index: number | null) {
 						:issue="issue"
 						:project-key="projectKey"
 						:members="members"
+						:selected="selected?.has(issue.id)"
 						@open="(id) => emit('open', id)"
 						@changed="(u) => emit('changed', u)"
+						@toggle-select="(id) => emit('toggleSelect', id)"
 					/>
 				</div>
 				<div
