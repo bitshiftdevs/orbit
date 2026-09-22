@@ -135,6 +135,31 @@ export default defineEventHandler(async (event) => {
         tag: `issue:${existing.id}`,
       }).catch(() => {});
     }
+    if (
+      body.status === "done" &&
+      existing.status !== "done" &&
+      existing.reporterId &&
+      existing.reporterId !== actor.id &&
+      existing.reporterId !== existing.assigneeId
+    ) {
+      const doneMsg = `${key} was completed`;
+      getDb()
+        .insert(notifications)
+        .values({
+          userId: existing.reporterId,
+          kind: "status_change" as const,
+          message: doneMsg,
+          projectId: existing.projectId,
+          issueId: existing.id,
+          actorId: actor.id,
+        })
+        .catch(() => {});
+      sendPushToUsers([existing.reporterId], {
+        title: key,
+        body: doneMsg,
+        tag: `issue:${existing.id}`,
+      }).catch(() => {});
+    }
   } else {
     dispatch(existing.projectId, "issue.updated", {
       key,
