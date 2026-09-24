@@ -25,7 +25,9 @@ const secretDialog = ref(false);
 const secretForm = ref({ name: "", description: "", value: "" });
 
 const envDialog = ref(false);
-const envForm = ref({ name: "", value: "" });
+const envRows = ref<{ name: string; value: string }[]>([{ name: "", value: "" }]);
+const envBulk = ref("");
+const envMode = ref<"rows" | "paste">("rows");
 
 const envByScope = computed(() =>
 	envVars.value.filter((e) => e.scope === activeScope.value),
@@ -132,25 +134,76 @@ async function deleteSecret(s: Secret) {
 	}
 }
 
+function openEnvDialog() {
+	envMode.value = "rows";
+	envRows.value = [{ name: "", value: "" }];
+	envBulk.value = "";
+	envDialog.value = true;
+}
+
+function addEnvRow() {
+	envRows.value.push({ name: "", value: "" });
+}
+
+function removeEnvRow(idx: number) {
+	envRows.value.splice(idx, 1);
+	if (!envRows.value.length) envRows.value.push({ name: "", value: "" });
+}
+
+// Parse a .env-style block into name/value pairs.
+// Supports `KEY=value`, `export KEY=value`, quoted values and comments.
+function parseDotEnv(text: string): { name: string; value: string }[] {
+	const out: { name: string; value: string }[] = [];
+	for (const raw of text.split(/\r?\n/)) {
+		const line = raw.trim();
+		if (!line || line.startsWith("#")) continue;
+		const stripped = line.replace(/^export\s+/, "");
+		const eq = stripped.indexOf("=");
+		if (eq === -1) continue;
+		const name = stripped.slice(0, eq).trim();
+		let value = stripped.slice(eq + 1).trim();
+		if (
+			(value.startsWith('"') && value.endsWith('"')) ||
+			(value.startsWith("'") && value.endsWith("'"))
+		) {
+			value = value.slice(1, -1);
+		}
+		if (name) out.push({ name, value });
+	}
+	return out;
+}
+
 async function saveEnvVar() {
 	if (!project.value) return;
+	const vars =
+		envMode.value === "paste"
+			? parseDotEnv(envBulk.value)
+			: envRows.value
+					.map((r) => ({ name: r.name.trim(), value: r.value }))
+					.filter((r) => r.name);
+	if (!vars.length) {
+		notify("Add at least one variable", "info");
+		return;
+	}
 	try {
-		const { envVar } = await api.post<{ envVar: EnvVar }>(
+		const { envVars: saved } = await api.post<{ envVars: EnvVar[] }>(
 			`/projects/${project.value.key}/env`,
-			{
-				scope: activeScope.value,
-				name: envForm.value.name,
-				value: envForm.value.value,
-			},
+			{ scope: activeScope.value, vars },
 		);
-		const idx = envVars.value.findIndex(
-			(v) => v.scope === envVar.scope && v.name === envVar.name,
-		);
-		if (idx >= 0) envVars.value[idx] = envVar;
-		else envVars.value.push(envVar);
+		for (const envVar of saved) {
+			const idx = envVars.value.findIndex(
+				(v) => v.scope === envVar.scope && v.name === envVar.name,
+			);
+			if (idx >= 0) envVars.value[idx] = envVar;
+			else envVars.value.push(envVar);
+		}
 		envDialog.value = false;
-		envForm.value = { name: "", value: "" };
-		notify(`${envVar.name} saved`, "success");
+		notify(
+			saved.length === 1 && saved[0]
+				? `${saved[0].name} saved`
+				: `${saved.length} vars saved`,
+			"success",
+		);
 	} catch (err) {
 		notifyError(err);
 	}
@@ -315,7 +368,7 @@ async function copyDotEnv() {
 							<Download class="h-3.5 w-3.5" />
 							.env
 						</Button>
-						<Button variant="primary" size="sm" @click="envDialog = true">
+						<Button variant="primary" size="sm" @click="openEnvDialog">
 							<Plus class="h-3.5 w-3.5" />
 							Add
 						</Button>
@@ -387,16 +440,61 @@ async function copyDotEnv() {
 			</template>
 		</Dialog>
 
-		<Dialog v-model:open="envDialog" :title="`Add ${activeScope} var`" width="480px">
+		<Dialog v-model:open="envDialog" :title="`Add ${activeScope} vars`" width="560px">
 			<div class="p-5 space-y-4">
-				<div class="space-y-1">
-					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Name</label>
-					<Input v-model="envForm.name" mono placeholder="DATABASE_URL" />
+				<div class="flex items-center gap-1 rounded-md border border-[var(--color-border)] p-0.5 text-xs w-fit">
+					<button
+						class="px-2.5 py-1 rounded"
+						:class="envMode === 'rows' ? 'bg-[var(--color-panel)] text-[var(--color-fg)]' : 'text-[var(--color-fg-muted)]'"
+						@click="envMode = 'rows'"
+					>
+						Fields
+					</button>
+					<button
+						class="px-2.5 py-1 rounded"
+						:class="envMode === 'paste' ? 'bg-[var(--color-panel)] text-[var(--color-fg)]' : 'text-[var(--color-fg-muted)]'"
+						@click="envMode = 'paste'"
+					>
+						Paste .env
+					</button>
 				</div>
-				<div class="space-y-1">
-					<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Value</label>
-					<Textarea v-model="envForm.value" :rows="3" />
-				</div>
+
+				<template v-if="envMode === 'rows'">
+					<div class="space-y-2">
+						<div
+							v-for="(row, idx) in envRows"
+							:key="idx"
+							class="flex items-start gap-2"
+						>
+							<Input v-model="row.name" mono placeholder="DATABASE_URL" class="flex-1" />
+							<Input v-model="row.value" mono placeholder="value" class="flex-1" />
+							<button
+								class="p-2 rounded text-[var(--color-fg-subtle)] hover:text-red-400 hover:bg-red-500/10"
+								title="Remove"
+								@click="removeEnvRow(idx)"
+							>
+								<Trash2 class="h-4 w-4" />
+							</button>
+						</div>
+					</div>
+					<Button variant="outline" size="sm" @click="addEnvRow">
+						<Plus class="h-3.5 w-3.5" />
+						Add another
+					</Button>
+				</template>
+
+				<template v-else>
+					<div class="space-y-1">
+						<label class="text-[11px] uppercase tracking-wider text-[var(--color-fg-subtle)]">Paste a .env block</label>
+						<Textarea
+							v-model="envBulk"
+							:rows="8"
+							placeholder="DATABASE_URL=postgres://…
+API_KEY=abc123
+# comments and blank lines are ignored"
+						/>
+					</div>
+				</template>
 			</div>
 			<template #footer>
 				<Button variant="ghost" @click="envDialog = false">Cancel</Button>
