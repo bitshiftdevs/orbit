@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ name: "project-secrets" });
 import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
-import { Copy, Download, Eye, EyeOff, Github, Plus, RefreshCw, Trash2 } from "lucide-vue-next";
+import { Check, Copy, Download, Eye, EyeOff, Github, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
 import Dialog from "~/components/ui/Dialog.vue";
 import Input from "~/components/ui/Input.vue";
@@ -20,6 +20,13 @@ const envVars = ref<EnvVar[]>([]);
 const revealed = ref<Record<string, string>>({});
 const envRevealed = ref<Record<string, string>>({});
 const activeScope = ref<"development" | "staging" | "production">("development");
+
+// Inline editing state: which row is being edited, and its draft value.
+const editingEnv = ref<string | null>(null);
+const editEnvValue = ref("");
+const editingSecret = ref<string | null>(null);
+const editSecretValue = ref("");
+const savingInline = ref(false);
 
 const secretDialog = ref(false);
 const secretForm = ref({ name: "", description: "", value: "" });
@@ -134,6 +141,37 @@ async function deleteSecret(s: Secret) {
 	}
 }
 
+function startEditSecret(s: Secret) {
+	editingEnv.value = null;
+	editingSecret.value = s.id;
+	editSecretValue.value = revealed.value[s.id] ?? "";
+}
+
+function cancelEditSecret() {
+	editingSecret.value = null;
+	editSecretValue.value = "";
+}
+
+async function saveEditSecret(s: Secret) {
+	if (savingInline.value) return;
+	savingInline.value = true;
+	try {
+		const { secret } = await api.patch<{ secret: Secret }>(`/secrets/${s.id}`, {
+			value: editSecretValue.value,
+		});
+		const idx = secrets.value.findIndex((x) => x.id === s.id);
+		if (idx >= 0) secrets.value[idx] = secret;
+		if (revealed.value[s.id] !== undefined)
+			revealed.value[s.id] = editSecretValue.value;
+		cancelEditSecret();
+		notify(`${secret.name} updated`, "success");
+	} catch (err) {
+		notifyError(err);
+	} finally {
+		savingInline.value = false;
+	}
+}
+
 function openEnvDialog() {
 	envMode.value = "rows";
 	envRows.value = [{ name: "", value: "" }];
@@ -219,6 +257,39 @@ async function deleteEnv(v: EnvVar) {
 	}
 }
 
+function startEditEnv(v: EnvVar) {
+	editingSecret.value = null;
+	editingEnv.value = v.id;
+	// Prefer an already-revealed value; otherwise start empty.
+	editEnvValue.value = envRevealed.value[v.id] ?? "";
+}
+
+function cancelEditEnv() {
+	editingEnv.value = null;
+	editEnvValue.value = "";
+}
+
+async function saveEditEnv(v: EnvVar) {
+	if (savingInline.value) return;
+	savingInline.value = true;
+	try {
+		const { envVar } = await api.patch<{ envVar: EnvVar }>(`/env/${v.id}`, {
+			value: editEnvValue.value,
+		});
+		const idx = envVars.value.findIndex((x) => x.id === v.id);
+		if (idx >= 0) envVars.value[idx] = envVar;
+		// Keep the revealed cache in sync if it was open.
+		if (envRevealed.value[v.id] !== undefined)
+			envRevealed.value[v.id] = editEnvValue.value;
+		cancelEditEnv();
+		notify(`${envVar.name} updated`, "success");
+	} catch (err) {
+		notifyError(err);
+	} finally {
+		savingInline.value = false;
+	}
+}
+
 async function fetchDotEnv(): Promise<Blob | null> {
 	if (!project.value) return null;
 	return api.get<Blob>(
@@ -299,36 +370,72 @@ async function copyDotEnv() {
 								{{ s.description }}
 							</p>
 						</div>
-						<div class="mono text-xs text-[var(--color-fg-subtle)] truncate max-w-[280px]">
-							<template v-if="revealed[s.id]">
-								<span class="text-[var(--color-fg)]">{{ revealed[s.id] }}</span>
-							</template>
-							<template v-else>
-								••••••••{{ s.lastFour ?? "" }}
-							</template>
-						</div>
-						<div class="text-[11px] text-[var(--color-fg-subtle)] w-24 text-right">
-							{{ timeAgo(s.updatedAt) }}
-						</div>
-						<button
-							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
-							@click="reveal(s)"
-						>
-							<component :is="revealed[s.id] ? EyeOff : Eye" class="h-4 w-4" />
-						</button>
-						<button
-							v-if="revealed[s.id]"
-							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
-							@click="copy(revealed[s.id])"
-						>
-							<Copy class="h-4 w-4" />
-						</button>
-						<button
-							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-red-400 hover:bg-red-500/10"
-							@click="deleteSecret(s)"
-						>
-							<Trash2 class="h-4 w-4" />
-						</button>
+						<template v-if="editingSecret === s.id">
+							<Input
+								v-model="editSecretValue"
+								mono
+								class="flex-1 max-w-[320px]"
+								placeholder="New value…"
+								autofocus
+								@keydown.enter="saveEditSecret(s)"
+								@keydown.esc="cancelEditSecret"
+							/>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-40"
+								:disabled="savingInline"
+								title="Save"
+								@click="saveEditSecret(s)"
+							>
+								<Check class="h-4 w-4" />
+							</button>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel-hover)]"
+								title="Cancel"
+								@click="cancelEditSecret"
+							>
+								<X class="h-4 w-4" />
+							</button>
+						</template>
+						<template v-else>
+							<div class="mono text-xs text-[var(--color-fg-subtle)] truncate max-w-[280px]">
+								<template v-if="revealed[s.id]">
+									<span class="text-[var(--color-fg)]">{{ revealed[s.id] }}</span>
+								</template>
+								<template v-else>
+									••••••••{{ s.lastFour ?? "" }}
+								</template>
+							</div>
+							<div class="text-[11px] text-[var(--color-fg-subtle)] w-24 text-right">
+								{{ timeAgo(s.updatedAt) }}
+							</div>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+								title="Reveal"
+								@click="reveal(s)"
+							>
+								<component :is="revealed[s.id] ? EyeOff : Eye" class="h-4 w-4" />
+							</button>
+							<button
+								v-if="revealed[s.id]"
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+								@click="copy(revealed[s.id])"
+							>
+								<Copy class="h-4 w-4" />
+							</button>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+								title="Edit value"
+								@click="startEditSecret(s)"
+							>
+								<Pencil class="h-4 w-4" />
+							</button>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-red-400 hover:bg-red-500/10"
+								@click="deleteSecret(s)"
+							>
+								<Trash2 class="h-4 w-4" />
+							</button>
+						</template>
 					</div>
 					<div
 						v-if="!secrets.length"
@@ -381,33 +488,69 @@ async function copyDotEnv() {
 						class="px-4 py-3 flex items-center gap-3"
 					>
 						<code class="mono text-sm text-[var(--color-fg)] flex-1 truncate">{{ v.name }}</code>
-						<div class="mono text-xs text-[var(--color-fg-subtle)] truncate max-w-[280px]">
-							<template v-if="envRevealed[v.id]">
-								<span class="text-[var(--color-fg)]">{{ envRevealed[v.id] }}</span>
-							</template>
-							<template v-else>
-								••••••••{{ v.lastFour ?? "" }}
-							</template>
-						</div>
-						<button
-							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
-							@click="revealEnv(v)"
-						>
-							<component :is="envRevealed[v.id] ? EyeOff : Eye" class="h-4 w-4" />
-						</button>
-						<button
-							v-if="envRevealed[v.id]"
-							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
-							@click="copy(envRevealed[v.id]!)"
-						>
-							<Copy class="h-4 w-4" />
-						</button>
-						<button
-							class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-red-400 hover:bg-red-500/10"
-							@click="deleteEnv(v)"
-						>
-							<Trash2 class="h-4 w-4" />
-						</button>
+						<template v-if="editingEnv === v.id">
+							<Input
+								v-model="editEnvValue"
+								mono
+								class="flex-1 max-w-[320px]"
+								placeholder="New value…"
+								autofocus
+								@keydown.enter="saveEditEnv(v)"
+								@keydown.esc="cancelEditEnv"
+							/>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-40"
+								:disabled="savingInline"
+								title="Save"
+								@click="saveEditEnv(v)"
+							>
+								<Check class="h-4 w-4" />
+							</button>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] hover:bg-[var(--color-panel-hover)]"
+								title="Cancel"
+								@click="cancelEditEnv"
+							>
+								<X class="h-4 w-4" />
+							</button>
+						</template>
+						<template v-else>
+							<div class="mono text-xs text-[var(--color-fg-subtle)] truncate max-w-[280px]">
+								<template v-if="envRevealed[v.id]">
+									<span class="text-[var(--color-fg)]">{{ envRevealed[v.id] }}</span>
+								</template>
+								<template v-else>
+									••••••••{{ v.lastFour ?? "" }}
+								</template>
+							</div>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+								title="Reveal"
+								@click="revealEnv(v)"
+							>
+								<component :is="envRevealed[v.id] ? EyeOff : Eye" class="h-4 w-4" />
+							</button>
+							<button
+								v-if="envRevealed[v.id]"
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+								@click="copy(envRevealed[v.id]!)"
+							>
+								<Copy class="h-4 w-4" />
+							</button>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)] hover:bg-[var(--color-panel-hover)]"
+								title="Edit value"
+								@click="startEditEnv(v)"
+							>
+								<Pencil class="h-4 w-4" />
+							</button>
+							<button
+								class="p-1.5 rounded text-[var(--color-fg-subtle)] hover:text-red-400 hover:bg-red-500/10"
+								@click="deleteEnv(v)"
+							>
+								<Trash2 class="h-4 w-4" />
+							</button>
+						</template>
 					</div>
 					<div
 						v-if="!envByScope.length"

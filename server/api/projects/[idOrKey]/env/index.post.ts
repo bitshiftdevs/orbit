@@ -1,8 +1,9 @@
+import { sql } from "drizzle-orm";
 import z from "zod";
 import { getDb } from "~~/server/db/client";
 import { User, envVars } from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
-import { audit } from "~~/server/lib/audit";
+import { auditMany } from "~~/server/lib/audit";
 import { encryptSecret, lastFour } from "~~/server/lib/crypto";
 import { requireAuth } from "~~/server/middleware/auth";
 
@@ -34,15 +35,6 @@ const envSchema = z
     { message: "Provide either { name, value } or a non-empty vars array." },
   );
 
-type EnvVarRow = {
-  id: string;
-  scope: "development" | "staging" | "production";
-  name: string;
-  lastFour: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
 export default defineEventHandler(async (event) => {
   await requireAuth(event);
   const user = event.context.user as User;
@@ -63,49 +55,51 @@ export default defineEventHandler(async (event) => {
   for (const item of items) byName.set(item.name, item);
   const deduped = [...byName.values()];
 
-  const saved: EnvVarRow[] = [];
-  for (const item of deduped) {
-    const ciphertext = encryptSecret(item.value);
-    const [row] = await db
-      .insert(envVars)
-      .values({
+  // Single bulk upsert — one round-trip regardless of how many vars.
+  const rows = await db
+    .insert(envVars)
+    .values(
+      deduped.map((item) => ({
         projectId: project.id,
         scope: body.scope,
         name: item.name,
-        ciphertext,
+        ciphertext: encryptSecret(item.value),
         lastFour: lastFour(item.value),
         createdById: actor.id,
-      })
-      .onConflictDoUpdate({
-        target: [envVars.projectId, envVars.scope, envVars.name],
-        set: {
-          ciphertext,
-          lastFour: lastFour(item.value),
-          updatedAt: new Date(),
-        },
-      })
-      .returning({
-        id: envVars.id,
-        scope: envVars.scope,
-        name: envVars.name,
-        lastFour: envVars.lastFour,
-        createdAt: envVars.createdAt,
-        updatedAt: envVars.updatedAt,
-      });
-    if (!row) continue;
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [envVars.projectId, envVars.scope, envVars.name],
+      set: {
+        // Reference the values proposed for insert so each conflicting row
+        // updates to its own new value.
+        ciphertext: sql`excluded.ciphertext`,
+        lastFour: sql`excluded.last_four`,
+        updatedAt: new Date(),
+      },
+    })
+    .returning({
+      id: envVars.id,
+      scope: envVars.scope,
+      name: envVars.name,
+      lastFour: envVars.lastFour,
+      createdAt: envVars.createdAt,
+      updatedAt: envVars.updatedAt,
+    });
 
-    await audit(event, {
-      action: "envvar.create",
+  // Single batched audit insert.
+  await auditMany(
+    event,
+    rows.map((row) => ({
+      action: "envvar.create" as const,
       projectId: project.id,
       targetId: row.id,
       targetName: `${row.scope}:${row.name}`,
-    });
-
-    saved.push(row);
-  }
+    })),
+  );
 
   // Return a single object for single-var requests (backwards compatible),
   // and an array for multi-var requests.
-  if (!body.vars) return { envVar: saved[0] };
-  return { envVars: saved };
+  if (!body.vars) return { envVar: rows[0] };
+  return { envVars: rows };
 });
