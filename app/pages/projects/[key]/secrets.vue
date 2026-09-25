@@ -23,8 +23,10 @@ const activeScope = ref<"development" | "staging" | "production">("development")
 
 // Inline editing state: which row is being edited, and its draft value.
 const editingEnv = ref<string | null>(null);
+const editEnvName = ref("");
 const editEnvValue = ref("");
 const editingSecret = ref<string | null>(null);
+const editSecretName = ref("");
 const editSecretValue = ref("");
 const savingInline = ref(false);
 
@@ -144,24 +146,36 @@ async function deleteSecret(s: Secret) {
 function startEditSecret(s: Secret) {
 	editingEnv.value = null;
 	editingSecret.value = s.id;
+	editSecretName.value = s.name;
 	editSecretValue.value = revealed.value[s.id] ?? "";
 }
 
 function cancelEditSecret() {
 	editingSecret.value = null;
+	editSecretName.value = "";
 	editSecretValue.value = "";
 }
 
 async function saveEditSecret(s: Secret) {
 	if (savingInline.value) return;
+	const name = editSecretName.value.trim().toUpperCase();
+	if (!name) {
+		notify("Name can't be empty", "info");
+		return;
+	}
 	savingInline.value = true;
 	try {
-		const { secret } = await api.patch<{ secret: Secret }>(`/secrets/${s.id}`, {
-			value: editSecretValue.value,
-		});
+		const patch: { name?: string; value?: string } = {};
+		if (name !== s.name) patch.name = name;
+		// Only send a value when the user actually typed one (avoids clobbering).
+		if (editSecretValue.value) patch.value = editSecretValue.value;
+		const { secret } = await api.patch<{ secret: Secret }>(
+			`/secrets/${s.id}`,
+			patch,
+		);
 		const idx = secrets.value.findIndex((x) => x.id === s.id);
 		if (idx >= 0) secrets.value[idx] = secret;
-		if (revealed.value[s.id] !== undefined)
+		if (patch.value !== undefined && revealed.value[s.id] !== undefined)
 			revealed.value[s.id] = editSecretValue.value;
 		cancelEditSecret();
 		notify(`${secret.name} updated`, "success");
@@ -260,26 +274,37 @@ async function deleteEnv(v: EnvVar) {
 function startEditEnv(v: EnvVar) {
 	editingSecret.value = null;
 	editingEnv.value = v.id;
+	editEnvName.value = v.name;
 	// Prefer an already-revealed value; otherwise start empty.
 	editEnvValue.value = envRevealed.value[v.id] ?? "";
 }
 
 function cancelEditEnv() {
 	editingEnv.value = null;
+	editEnvName.value = "";
 	editEnvValue.value = "";
 }
 
 async function saveEditEnv(v: EnvVar) {
 	if (savingInline.value) return;
+	const name = editEnvName.value.trim().toUpperCase();
+	if (!name) {
+		notify("Name can't be empty", "info");
+		return;
+	}
 	savingInline.value = true;
 	try {
-		const { envVar } = await api.patch<{ envVar: EnvVar }>(`/env/${v.id}`, {
-			value: editEnvValue.value,
-		});
+		const patch: { name?: string; value?: string } = {};
+		if (name !== v.name) patch.name = name;
+		if (editEnvValue.value) patch.value = editEnvValue.value;
+		const { envVar } = await api.patch<{ envVar: EnvVar }>(
+			`/env/${v.id}`,
+			patch,
+		);
 		const idx = envVars.value.findIndex((x) => x.id === v.id);
 		if (idx >= 0) envVars.value[idx] = envVar;
-		// Keep the revealed cache in sync if it was open.
-		if (envRevealed.value[v.id] !== undefined)
+		// Keep the revealed cache in sync if it was open and the value changed.
+		if (patch.value !== undefined && envRevealed.value[v.id] !== undefined)
 			envRevealed.value[v.id] = editEnvValue.value;
 		cancelEditEnv();
 		notify(`${envVar.name} updated`, "success");
@@ -364,7 +389,16 @@ async function copyDotEnv() {
 					>
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-2">
-								<code class="mono text-sm text-[var(--color-fg)]">{{ s.name }}</code>
+								<Input
+									v-if="editingSecret === s.id"
+									v-model="editSecretName"
+									mono
+									class="max-w-[240px]"
+									placeholder="NAME"
+									@keydown.enter="saveEditSecret(s)"
+									@keydown.esc="cancelEditSecret"
+								/>
+								<code v-else class="mono text-sm text-[var(--color-fg)]">{{ s.name }}</code>
 							</div>
 							<p v-if="s.description" class="text-xs text-[var(--color-fg-subtle)] mt-0.5">
 								{{ s.description }}
@@ -487,8 +521,15 @@ async function copyDotEnv() {
 						:key="v.id"
 						class="px-4 py-3 flex items-center gap-3"
 					>
-						<code class="mono text-sm text-[var(--color-fg)] flex-1 truncate">{{ v.name }}</code>
 						<template v-if="editingEnv === v.id">
+							<Input
+								v-model="editEnvName"
+								mono
+								class="flex-1 max-w-[220px] uppercase"
+								placeholder="NAME"
+								@keydown.enter="saveEditEnv(v)"
+								@keydown.esc="cancelEditEnv"
+							/>
 							<Input
 								v-model="editEnvValue"
 								mono
@@ -515,6 +556,7 @@ async function copyDotEnv() {
 							</button>
 						</template>
 						<template v-else>
+							<code class="mono text-sm text-[var(--color-fg)] flex-1 truncate">{{ v.name }}</code>
 							<div class="mono text-xs text-[var(--color-fg-subtle)] truncate max-w-[280px]">
 								<template v-if="envRevealed[v.id]">
 									<span class="text-[var(--color-fg)]">{{ envRevealed[v.id] }}</span>
