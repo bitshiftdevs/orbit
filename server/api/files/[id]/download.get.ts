@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { getHeader } from "h3";
 import { getDb } from "~~/server/db/client";
 import { User, files } from "~~/server/db/schema";
 import { assertMember } from "~~/server/lib/access";
@@ -17,6 +18,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "file not found" });
   await assertMember(user, row.projectId);
 
+  const etag = `"${row.sha256}"`;
+  if (getHeader(event, "if-none-match") === etag) {
+    return new Response(null, {
+      status: 304,
+      headers: {
+        etag,
+        "cache-control": "private, max-age=0, must-revalidate",
+      },
+    });
+  }
+
   await audit(event, {
     action: "file.download",
     projectId: row.projectId,
@@ -29,6 +41,8 @@ export default defineEventHandler(async (event) => {
       "content-type": row.mimeType,
       "content-length": String(row.sizeBytes),
       "content-disposition": `attachment; filename="${encodeURIComponent(row.name)}"`,
+      etag,
+      "cache-control": "private, max-age=0, must-revalidate",
     },
   });
 });

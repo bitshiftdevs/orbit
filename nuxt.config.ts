@@ -79,6 +79,17 @@ export default defineNuxtConfig({
     // platform-binary packages (@node-rs/argon2-linux-x64-{gnu,musl}) so they
     // are copied into the Vercel function bundle. Forcing it external via
     // rollupConfig bypasses that tracing → ERR_MODULE_NOT_FOUND at runtime.
+    routeRules: {
+      "/_nuxt/**": {
+        headers: { "cache-control": "public, max-age=31536000, immutable" },
+      },
+      "/favicon.svg": {
+        headers: { "cache-control": "public, max-age=86400" },
+      },
+      "/sw.js": {
+        headers: { "cache-control": "public, max-age=0, must-revalidate" },
+      },
+    },
   },
 
   compatibilityDate: "2025-11-30",

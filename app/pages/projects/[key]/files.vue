@@ -1,11 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ name: "project-files" });
-import { inject, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
-import { Download, Eye, File as FileIcon, FilePlus, RefreshCw, Trash2, Upload } from "lucide-vue-next";
+import { inject, onMounted, ref, watch, type Ref } from "vue";
+import { Download, Eye, FilePlus, RefreshCw, Trash2, Upload } from "lucide-vue-next";
 import Button from "~/components/ui/Button.vue";
 import Dialog from "~/components/ui/Dialog.vue";
 import Skeleton from "~/components/ui/Skeleton.vue";
 import FilePreview from "~/components/files/FilePreview.vue";
+import FileThumb from "~/components/files/FileThumb.vue";
 import { api } from "~/lib/api";
 import type { FileRow, Project } from "~/types/domain";
 import { notify, notifyError } from "~/lib/notify";
@@ -25,20 +26,6 @@ const initialLoading = ref(true);
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-const thumbUrls = ref<Record<string, string>>({});
-
-async function loadThumb(f: FileRow) {
-	if (thumbUrls.value[f.id]) return;
-	if (!f.mimeType.startsWith("image/") && f.mimeType !== "application/pdf") return;
-	try {
-		const blob = await api.raw<Blob>(`/files/${f.id}/preview`);
-		thumbUrls.value[f.id] = URL.createObjectURL(blob);
-	} catch {}
-}
-
-watch(files, (rows) => rows.forEach(loadThumb));
-onUnmounted(() => Object.values(thumbUrls.value).forEach(URL.revokeObjectURL));
-
 async function load(force = false) {
 	if (!project.value) return;
 	refreshing.value = true;
@@ -48,7 +35,6 @@ async function load(force = false) {
 			{ force },
 		);
 		files.value = rows;
-		rows.forEach(loadThumb);
 	} catch (err) {
 		notifyError(err);
 	} finally {
@@ -211,21 +197,7 @@ async function createMarkdown() {
 					:key="f.id"
 					class="card card-hover overflow-hidden flex flex-col"
 				>
-					<div class="h-36 bg-[var(--color-bg-elevated)] grid place-items-center border-b border-[var(--color-border)] overflow-hidden">
-						<img
-							v-if="f.mimeType.startsWith('image/') && thumbUrls[f.id]"
-							:src="thumbUrls[f.id]"
-							:alt="f.name"
-							class="h-full w-full object-cover"
-						/>
-						<embed
-							v-else-if="f.mimeType === 'application/pdf' && thumbUrls[f.id]"
-							:src="thumbUrls[f.id]"
-							type="application/pdf"
-							class="h-full w-full"
-						/>
-						<FileIcon v-else class="h-8 w-8 text-[var(--color-fg-subtle)]" />
-					</div>
+					<FileThumb :file="f" />
 					<div class="p-3 flex items-center gap-3">
 						<div class="min-w-0 flex-1">
 							<div class="text-sm truncate">{{ f.name }}</div>
