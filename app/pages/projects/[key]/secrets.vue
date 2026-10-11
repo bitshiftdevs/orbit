@@ -61,12 +61,12 @@ async function load(force = false) {
 	if (!project.value) return;
 	refreshing.value = true;
 	try {
-		const [{ secrets: s }, { envVars: e }] = await Promise.all([
-			api.get<{ secrets: Secret[] }>(`/projects/${project.value.key}/secrets`, { force }),
-			api.get<{ envVars: EnvVar[] }>(`/projects/${project.value.key}/env`, { force }),
-		]);
+		const { secrets: s, envVars: e } = await api.get<{
+			secrets: Secret[];
+			envVars: EnvVar[];
+		}>(`/projects/${project.value.key}/secrets?include=env`, { force });
 		secrets.value = s;
-		envVars.value = e;
+		envVars.value = e ?? [];
 	} catch (err) {
 		notifyError(err);
 	} finally {

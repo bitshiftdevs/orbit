@@ -68,19 +68,21 @@ async function load(force = false) {
 	refreshing.value = true;
 	issueOffset.value = 0;
 	try {
-		const [{ issues: rows, total }, { filters }, { sprints: sprintRows }] = await Promise.all([
-			api.get<{ issues: Issue[]; total: number; hasMore: boolean }>(
-				`/projects/${project.value.key}/issues?limit=${ISSUE_PAGE}&offset=0`,
-				{ force },
-			),
-			api.get<{ filters: SavedFilter[] }>(`/projects/${project.value.key}/filters`, { force }),
-			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`, { force }),
-		]);
+		const { issues: rows, total, filters, sprints: sprintRows } = await api.get<{
+			issues: Issue[];
+			total: number;
+			hasMore: boolean;
+			filters: SavedFilter[];
+			sprints: Sprint[];
+		}>(
+			`/projects/${project.value.key}/issues?limit=${ISSUE_PAGE}&offset=0&include=sprints,filters`,
+			{ force },
+		);
 		issues.value = rows;
 		issueTotal.value = total;
 		issueOffset.value = rows.length;
-		savedFilters.value = filters;
-		sprints.value = sprintRows;
+		savedFilters.value = filters ?? [];
+		sprints.value = sprintRows ?? [];
 	} catch (err) {
 		notifyError(err);
 	} finally {

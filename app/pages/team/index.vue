@@ -23,14 +23,12 @@ const refreshing = ref(false);
 async function load(force = false) {
 	refreshing.value = true;
 	try {
-		const [{ team: t }, { invites: i }] = await Promise.all([
-			api.get<{ team: SessionUser[] }>("/team", { force }),
-			api
-				.get<{ invites: typeof invites.value }>("/auth/invites", { force })
-				.catch(() => ({ invites: [] })),
-		]);
+		const { team: t, invites: i } = await api.get<{
+			team: SessionUser[];
+			invites?: typeof invites.value;
+		}>("/team?include=invites", { force });
 		team.value = t;
-		invites.value = i;
+		invites.value = i ?? [];
 	} catch (err) {
 		notifyError(err);
 	} finally {

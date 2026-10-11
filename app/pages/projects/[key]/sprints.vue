@@ -25,19 +25,18 @@ const refreshing = ref(false);
 const velocity = ref<SprintVelocity[]>([]);
 const cycleTime = ref<CycleTimeEntry[]>([]);
 const analyticsOpen = ref(false);
+const analyticsLoaded = ref(false);
+const analyticsLoading = ref(false);
 
 async function load(force = false) {
 	if (!project.value) return;
 	refreshing.value = true;
 	try {
-		const [{ sprints: rows }, { velocity: v }, { cycleTime: ct }] = await Promise.all([
-			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`, { force }),
-			api.get<{ velocity: SprintVelocity[] }>(`/projects/${project.value.key}/velocity`, { force }),
-			api.get<{ cycleTime: CycleTimeEntry[] }>(`/projects/${project.value.key}/cycle-time`, { force }),
-		]);
+		const { sprints: rows } = await api.get<{ sprints: Sprint[] }>(
+			`/projects/${project.value.key}/sprints`,
+			{ force },
+		);
 		sprints.value = rows;
-		velocity.value = v;
-		cycleTime.value = ct;
 	} catch (err) {
 		notifyError(err);
 	} finally {
@@ -45,8 +44,37 @@ async function load(force = false) {
 	}
 }
 
+async function loadAnalytics(force = false) {
+	if (!project.value) return;
+	if (analyticsLoaded.value && !force) return;
+	analyticsLoading.value = true;
+	try {
+		const [{ velocity: v }, { cycleTime: ct }] = await Promise.all([
+			api.get<{ velocity: SprintVelocity[] }>(`/projects/${project.value.key}/velocity`, { force }),
+			api.get<{ cycleTime: CycleTimeEntry[] }>(`/projects/${project.value.key}/cycle-time`, { force }),
+		]);
+		velocity.value = v;
+		cycleTime.value = ct;
+		analyticsLoaded.value = true;
+	} catch (err) {
+		notifyError(err);
+	} finally {
+		analyticsLoading.value = false;
+	}
+}
+
+function toggleAnalytics() {
+	analyticsOpen.value = !analyticsOpen.value;
+	if (analyticsOpen.value) loadAnalytics();
+}
+
 onMounted(load);
-watch(() => project.value?.key, (key, prev) => { if (key && key !== prev) load(); });
+watch(() => project.value?.key, (key, prev) => {
+	if (key && key !== prev) {
+		analyticsLoaded.value = false;
+		load();
+	}
+});
 
 async function create() {
 	if (!project.value) return;
@@ -123,7 +151,7 @@ async function toggleBurndown(s: Sprint) {
 				>
 					<RefreshCw class="h-3.5 w-3.5" :class="refreshing && 'animate-spin'" />
 				</button>
-				<Button variant="ghost" size="sm" @click="analyticsOpen = !analyticsOpen">
+				<Button variant="ghost" size="sm" @click="toggleAnalytics">
 					<TrendingUp class="h-3.5 w-3.5" />
 					Analytics
 				</Button>
@@ -136,7 +164,8 @@ async function toggleBurndown(s: Sprint) {
 
 		<!-- Analytics panel -->
 		<div v-if="analyticsOpen" class="px-4 sm:px-8 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] space-y-4">
-			<VelocityChart :sprints="velocity" />
+			<Spinner v-if="analyticsLoading && !analyticsLoaded" size="sm" label="Loading analytics…" class="text-xs" />
+			<VelocityChart v-else :sprints="velocity" />
 			<div v-if="cycleTime.length" class="card p-4">
 				<div class="text-xs text-[var(--color-fg-subtle)] uppercase tracking-widest mb-3">Cycle time (avg days to completion)</div>
 				<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">

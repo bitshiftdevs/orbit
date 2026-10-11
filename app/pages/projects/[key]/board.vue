@@ -77,12 +77,12 @@ async function load(force = false) {
 	if (!project.value) return;
 	refreshing.value = true;
 	try {
-		const [{ issues: rows }, { sprints: sprintRows }] = await Promise.all([
-			api.get<{ issues: Issue[] }>(`/projects/${project.value.key}/issues`, { force }),
-			api.get<{ sprints: Sprint[] }>(`/projects/${project.value.key}/sprints`, { force }),
-		]);
+		const { issues: rows, sprints: sprintRows } = await api.get<{
+			issues: Issue[];
+			sprints: Sprint[];
+		}>(`/projects/${project.value.key}/issues?include=sprints`, { force });
 		issues.value = rows;
-		sprints.value = sprintRows;
+		sprints.value = sprintRows ?? [];
 	} catch (err) {
 		notifyError(err);
 	} finally {

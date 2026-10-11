@@ -1,6 +1,11 @@
-import { asc, count, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, or } from "drizzle-orm";
 import { getDb } from "~~/server/db/client";
-import { issues, users } from "~~/server/db/schema";
+import {
+	issues,
+	savedFilters,
+	sprints,
+	users,
+} from "~~/server/db/schema";
 import { loadProject, assertMember } from "~~/server/lib/access";
 import { requireAuth } from "~~/server/middleware/auth";
 import type { User } from "~~/server/db/schema";
@@ -21,10 +26,17 @@ export default defineEventHandler(async (event) => {
 	await assertMember(user, project.id);
 	const db = getDb();
 
-	const limit = Math.min(Number(getQuery(event).limit ?? 500), 500);
-	const offset = Math.max(Number(getQuery(event).offset ?? 0), 0);
+	const query = getQuery(event);
+	const limit = Math.min(Number(query.limit ?? 500), 500);
+	const offset = Math.max(Number(query.offset ?? 0), 0);
+	const include = String(query.include ?? "")
+		.split(",")
+		.map((s) => s.trim())
+		.filter(Boolean);
+	const wantSprints = include.includes("sprints");
+	const wantFilters = include.includes("filters");
 
-	const [rows, [{ value: total }]] = await Promise.all([
+	const [rows, [{ value: total }], sprintRows, filterRows] = await Promise.all([
 		db
 			.select({ issue: issues, assignee: author })
 			.from(issues)
@@ -37,9 +49,31 @@ export default defineEventHandler(async (event) => {
 			.select({ value: count() })
 			.from(issues)
 			.where(eq(issues.projectId, project.id)),
+		wantSprints
+			? db
+					.select()
+					.from(sprints)
+					.where(eq(sprints.projectId, project.id))
+					.orderBy(desc(sprints.createdAt))
+			: Promise.resolve([] as Array<typeof sprints.$inferSelect>),
+		wantFilters
+			? db
+					.select()
+					.from(savedFilters)
+					.where(
+						and(
+							eq(savedFilters.userId, user.id),
+							or(
+								eq(savedFilters.projectId, project.id),
+								isNull(savedFilters.projectId),
+							),
+						),
+					)
+					.orderBy(desc(savedFilters.createdAt))
+			: Promise.resolve([] as Array<typeof savedFilters.$inferSelect>),
 	]);
 
-	return {
+	const payload: Record<string, unknown> = {
 		issues: rows.map((r) => ({
 			...r.issue,
 			key: `${project.key}-${r.issue.number}`,
@@ -48,4 +82,7 @@ export default defineEventHandler(async (event) => {
 		total,
 		hasMore: offset + rows.length < total,
 	};
+	if (wantSprints) payload.sprints = sprintRows;
+	if (wantFilters) payload.filters = filterRows;
+	return payload;
 });

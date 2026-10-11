@@ -20,26 +20,14 @@ async function load(force = false) {
   refreshing.value = true;
   loading.value = true;
   try {
-    await projectStore.load();
-    const all: Array<Issue & { projectKey: string }> = [];
-    for (const p of projectStore.items) {
-      try {
-        const { issues } = await api.get<{ issues: Issue[] }>(
-          `/projects/${p.key}/issues`,
-          { force },
-        );
-        for (const i of issues) {
-          if (
-            i.assigneeId === session.user?.id &&
-            i.status !== "done" &&
-            i.status !== "cancelled"
-          ) {
-            all.push({ ...i, projectKey: p.key });
-          }
-        }
-      } catch {}
-    }
-    mine.value = all;
+    const [{ assigned }] = await Promise.all([
+      api.get<{ assigned: Array<Issue & { projectKey: string }> }>(
+        "/dashboard",
+        { force },
+      ),
+      projectStore.ensureLoaded(),
+    ]);
+    mine.value = assigned;
   } finally {
     loading.value = false;
     refreshing.value = false;

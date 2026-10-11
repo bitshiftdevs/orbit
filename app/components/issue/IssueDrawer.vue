@@ -123,17 +123,15 @@ watch(
 				issue: Issue;
 				project: Project;
 				comments: IssueComment[];
+				sprints: Sprint[];
+				links: IssueLink[];
 			}>(`/issues/${id}`);
 			issue.value = res.issue;
 			project.value = res.project;
 			comments.value = res.comments;
+			sprints.value = res.sprints ?? [];
+			links.value = res.links ?? [];
 			initDraft();
-			const [{ sprints: rows }, { links: linkRows }] = await Promise.all([
-				api.get<{ sprints: Sprint[] }>(`/projects/${res.project.key}/sprints`),
-				api.get<{ links: IssueLink[] }>(`/issues/${id}/links`),
-			]);
-			sprints.value = rows ?? [];
-			links.value = linkRows ?? [];
 		} catch (err) {
 			notifyError(err);
 			emit("close");
